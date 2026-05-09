@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>woodworking.au — Project Planner</title>
+  <meta name="description" content="Describe your woodworking project and get a personalised step-by-step plan, timber recommendations, and a materials list — all tailored for Australian hobby woodworkers.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg:            #EDE6D3;
+      --surface:       #F7F1E3;
+      --surface-high:  #FDFAF2;
+      --timber-dark:   #3B1F08;
+      --timber-mid:    #7A4F2A;
+      --timber-light:  #B88A58;
+      --action:        #59321A;
+      --action-hover:  #7A4828;
+      --action-text:   #FDF7EC;
+      --text:          #251508;
+      --text-muted:    #7B5D3F;
+      --border:        #C8B28A;
+      --border-light:  #DDD0B0;
+      --green:         #3A6644;
+      --error:         #8B2020;
+      --radius:        10px;
+      --radius-sm:     6px;
+      --shadow:        0 2px 16px rgba(55, 25, 0, 0.10);
+      --shadow-sm:     0 1px 6px rgba(55, 25, 0, 0.08);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 16px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Layout ── */
+    .app {
+      width: 100%;
+      max-width: 680px;
+      padding: 0 16px 60px;
+      flex: 1;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+    }
+    .screen.visible {
+      display: block;
+      animation: fadeUp 0.36s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Wordmark ── */
+    .wordmark {
+      padding-top: 48px;
+      margin-bottom: 4px;
+    }
+    .wordmark-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .wordmark-name {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      letter-spacing: -0.3px;
+    }
+    .wordmark-sub {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--timber-light);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .beta-badge {
+      display: inline-flex;
+      align-items: center;
+      background: #C07830;
+      color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    /* ── Landing screen ── */
+    .landing-hero {
+      margin-top: 40px;
+      margin-bottom: 36px;
+    }
+    .landing-hero h1 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(28px, 6vw, 40px);
+      font-weight: 700;
+      color: var(--timber-dark);
+      line-height: 1.25;
+      margin-bottom: 14px;
+    }
+    .landing-hero p {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 480px;
+      line-height: 1.65;
+    }
+
+    .landing-form {
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+    }
+    .landing-form label {
+      display: block;
+      font-weight: 600;
+      font-size: 16px;
+      color: var(--timber-dark);
+      margin-bottom: 10px;
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      font-family: inherit;
+      font-size: 16px;
+      color: var(--text);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    textarea:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: var(--timber-mid);
+      background: var(--surface-high);
+    }
+    textarea::placeholder, input[type="text"]::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+    textarea {
+      min-height: 100px;
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: inline-block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 14px 24px;
+      background: var(--action);
+      color: var(--action-text);
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      text-align: center;
+    }
+    .btn-primary:hover {
+      background: var(--action-hover);
+    }
+    .btn-primary:active {
+      transform: scale(0.98);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      display: inline-block;
+      padding: 12px 24px;
+      background: transparent;
+      color: var(--action);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      border: 2px solid var(--action);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+      text-align: center;
+    }
+    .btn-secondary:hover {
+      background: var(--action);
+      color: var(--action-text);
+    }
+
+    .btn-suggest {
+      width: 100%;
+      padding: 14px 20px;
+      background: transparent;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      border: 2px solid var(--green);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+      text-align: center;
+    }
+    .btn-suggest:hover {
+      background: var(--green);
+      color: #fff;
+    }
+
+    /* ── Question screens ── */
+    .question-top {
+      margin-top: 44px;
+      margin-bottom: 32px;
+    }
+
+    .step-badge {
+      display: inline-block;
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--timber-light);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .question-top h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(22px, 5vw, 30px);
+      font-weight: 700;
+      color: var(--timber-dark);
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+
+    .question-top p {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+
+    /* Recap pill showing what they're building */
+    .recap-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 6px 14px 6px 10px;
+      font-size: 14px;
+      color: var(--timber-mid);
+      margin-bottom: 28px;
+      max-width: 100%;
+      overflow: hidden;
+    }
+    .recap-pill span.label {
+      font-weight: 600;
+      white-space: nowrap;
+      color: var(--text-muted);
+    }
+    .recap-pill span.value {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--timber-dark);
+      font-style: italic;
+    }
+
+    /* Choice buttons */
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .choice-btn {
+      width: 100%;
+      padding: 18px 20px;
+      background: var(--surface-high);
+      border: 1.5px solid var(--border-light);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.1s;
+      box-shadow: var(--shadow-sm);
+      font-family: inherit;
+    }
+    .choice-btn:hover {
+      border-color: var(--timber-mid);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .choice-btn:active {
+      transform: scale(0.985);
+    }
+    .choice-btn strong {
+      display: block;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--timber-dark);
+      margin-bottom: 3px;
+    }
+    .choice-btn span {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Timber screen */
+    .timber-field {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .timber-field label {
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--timber-dark);
+    }
+    .timber-field input {
+      margin-bottom: 4px;
+    }
+    .timber-input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .timber-input-row input {
+      flex: 1;
+      margin: 0;
+    }
+    .timber-input-row .btn-use {
+      flex-shrink: 0;
+      padding: 12px 18px;
+      background: var(--action);
+      color: var(--action-text);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.18s;
+    }
+    .timber-input-row .btn-use:hover {
+      background: var(--action-hover);
+    }
+
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 14px;
+      margin: 4px 0;
+    }
+    .or-divider::before,
+    .or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-light);
+    }
+
+    /* ── Results screen ── */
+    .results-top {
+      margin-top: 44px;
+      margin-bottom: 24px;
+    }
+    .results-top h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(20px, 4.5vw, 28px);
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-bottom: 6px;
+    }
+    .results-top p {
+      font-size: 15px;
+      color: var(--text-muted);
+    }
+
+    /* Summary card */
+    .summary-card {
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+    }
+    .summary-item {
+      font-size: 14px;
+    }
+    .summary-item .s-label {
+      font-weight: 600;
+      color: var(--text-muted);
+      display: block;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1px;
+    }
+    .summary-item .s-value {
+      color: var(--timber-dark);
+      font-weight: 500;
+    }
+
+    /* Plan output area */
+    .plan-output {
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      box-shadow: var(--shadow);
+      min-height: 120px;
+    }
+
+    /* Loading state */
+    .plan-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    .loading-dots {
+      display: flex;
+      gap: 8px;
+    }
+    .loading-dots span {
+      width: 10px;
+      height: 10px;
+      background: var(--timber-light);
+      border-radius: 50%;
+      animation: dot-pulse 1.4s ease-in-out infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-pulse {
+      0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+      40%            { opacity: 1;    transform: scale(1); }
+    }
+
+    .generating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--timber-light);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .generating-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: var(--timber-light);
+      border-radius: 50%;
+      animation: dot-pulse 1.2s ease-in-out infinite;
+    }
+
+    /* ── Rendered plan markdown styles ── */
+    .plan-body h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-top: 32px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-light);
+    }
+    .plan-body h2:first-child {
+      margin-top: 0;
+    }
+    .plan-body h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--timber-mid);
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    .plan-body p {
+      margin-bottom: 12px;
+      font-size: 16px;
+      line-height: 1.75;
+    }
+    .plan-body ul, .plan-body ol {
+      margin-left: 20px;
+      margin-bottom: 14px;
+    }
+    .plan-body li {
+      margin-bottom: 8px;
+      font-size: 16px;
+      line-height: 1.65;
+    }
+    .plan-body ol li {
+      padding-left: 4px;
+    }
+    .plan-body strong {
+      color: var(--timber-dark);
+      font-weight: 600;
+    }
+    .plan-body em {
+      color: var(--text-muted);
+    }
+    .plan-body code {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 14px;
+    }
+    .plan-body hr {
+      border: none;
+      border-top: 1px solid var(--border-light);
+      margin: 24px 0;
+    }
+
+    /* Error state */
+    .plan-error {
+      color: var(--error);
+      font-size: 15px;
+      padding: 8px 0;
+    }
+
+    /* ── Sketch section ── */
+    .sketch-section {
+      margin-top: 32px;
+      margin-bottom: 4px;
+    }
+    .sketch-section-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border-light);
+    }
+    .sketch-box {
+      background: #FDFBF6;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      overflow: hidden;
+    }
+    .sketch-box svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .sketch-loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 14px;
+      padding: 20px 0;
+    }
+    .sketch-error {
+      font-size: 14px;
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    /* Results footer */
+    .results-footer {
+      margin-top: 28px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    /* ── Feedback ── */
+    .feedback-section {
+      margin-top: 32px;
+      border-top: 1px solid var(--border-light);
+      padding-top: 28px;
+    }
+    .feedback-form {
+      display: none;
+      animation: fadeUp 0.28s ease both;
+    }
+    .feedback-form.open {
+      display: block;
+    }
+    .feedback-form-heading {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--timber-dark);
+      margin-bottom: 16px;
+    }
+    /* Star / number rating row */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .rating-legend {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+    .rating-btn {
+      width: 44px;
+      height: 44px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--timber-mid);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rating-btn:hover,
+    .rating-btn.selected {
+      background: var(--action);
+      border-color: var(--action);
+      color: var(--action-text);
+    }
+    .feedback-comments {
+      width: 100%;
+      margin-bottom: 14px;
+      min-height: 90px;
+    }
+    .btn-feedback-submit {
+      padding: 12px 24px;
+      background: var(--action);
+      color: var(--action-text);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .btn-feedback-submit:hover { background: var(--action-hover); }
+    .btn-feedback-submit:active { transform: scale(0.98); }
+    .btn-feedback-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .feedback-message {
+      font-size: 15px;
+      padding: 14px 18px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+    }
+    .feedback-message.success {
+      background: #EBF4EE;
+      color: var(--green);
+      border: 1px solid #C0DBC7;
+    }
+    .feedback-message.error {
+      background: #F9EDED;
+      color: var(--error);
+      border: 1px solid #DDB8B8;
+    }
+
+    /* ── Variant cards ── */
+    .variants-question {
+      margin-top: 44px;
+      margin-bottom: 28px;
+    }
+    .variants-question h2 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: clamp(22px, 5vw, 30px);
+      font-weight: 700;
+      color: var(--timber-dark);
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+    .variants-question p {
+      font-size: 16px;
+      color: var(--text-muted);
+    }
+    .variants-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 48px 0;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .variants-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .variant-card {
+      background: var(--surface-high);
+      border: 1.5px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 22px 20px 20px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.18s, box-shadow 0.18s;
+    }
+    .variant-card:hover {
+      border-color: var(--timber-light);
+      box-shadow: var(--shadow);
+    }
+    .variant-card h3 {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-bottom: 8px;
+    }
+    .variant-card p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.65;
+      margin-bottom: 0;
+    }
+    .variant-card .btn-choose {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px 20px;
+      background: transparent;
+      color: var(--action);
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      border: 1.5px solid var(--action);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.18s, color 0.18s;
+    }
+    .variant-card .btn-choose:hover {
+      background: var(--action);
+      color: var(--action-text);
+    }
+    .variants-error {
+      text-align: center;
+      padding: 28px 0;
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .variants-error p { margin-bottom: 14px; }
+
+    /* ── Divider line under wordmark ── */
+    .wordmark-rule {
+      height: 1px;
+      background: var(--border-light);
+      margin-top: 20px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 20px 16px 32px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .landing-form {
+        padding: 20px 16px;
+      }
+      .plan-output {
+        padding: 20px 16px;
+      }
+      .summary-card {
+        padding: 14px 16px;
+      }
+      .timber-input-row {
+        flex-direction: column;
+      }
+      .timber-input-row .btn-use {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── LANDING SCREEN ── -->
+  <section id="screen-landing" class="screen visible">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+      <div class="wordmark-sub">Project Planner</div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="landing-hero">
+      <h1>What would you like to build?</h1>
+      <p>Tell us what you have in mind — even a rough idea is enough. We'll ask a few quick questions and put together a personalised project plan for you.</p>
+    </div>
+
+    <div class="landing-form">
+      <label for="project-input">Describe your project</label>
+      <textarea
+        id="project-input"
+        rows="4"
+        placeholder="e.g. A timber garden bench for the back patio, a small bookshelf for the hallway, a wooden toy box for the grandkids…"
+        maxlength="600"
+      ></textarea>
+      <button id="btn-start" class="btn-primary">Get started &rarr;</button>
+    </div>
+  </section>
+
+  <!-- ── DESIGN VARIANTS ── -->
+  <section id="screen-variants" class="screen">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="variants-question">
+      <div id="recap-variants" class="recap-pill">
+        <span class="label">Building:</span>
+        <span class="value" id="recap-variants-text"></span>
+      </div>
+      <h2>Choose your design approach</h2>
+      <p>Here are three different ways to approach this project. Pick the one that appeals to you most.</p>
+    </div>
+
+    <div id="variants-loading" class="variants-loading">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <p>Working out some design options for you&hellip;</p>
+    </div>
+
+    <div id="variants-cards" class="variants-cards" style="display:none"></div>
+
+    <div id="variants-error" class="variants-error" style="display:none">
+      <p>Sorry, couldn't come up with design options just now.</p>
+      <button id="btn-variants-retry" class="btn-secondary">Try again</button>
+    </div>
+  </section>
+
+  <!-- ── QUESTION 1: Experience ── -->
+  <section id="screen-q1" class="screen">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="question-top">
+      <div id="recap-q1" class="recap-pill">
+        <span class="label">Building:</span>
+        <span class="value" id="recap-q1-text"></span>
+      </div>
+      <div class="step-badge">Step 1 of 3</div>
+      <h2>What's your experience level?</h2>
+      <p>Be honest — there's no wrong answer. This helps us pitch the plan at the right level.</p>
+    </div>
+
+    <div class="choices">
+      <button class="choice-btn" data-value="Beginner">
+        <strong>Beginner</strong>
+        <span>Just starting out, or you've built a few simple things</span>
+      </button>
+      <button class="choice-btn" data-value="Intermediate">
+        <strong>Intermediate</strong>
+        <span>Comfortable with the basics and tackled a few projects</span>
+      </button>
+      <button class="choice-btn" data-value="Experienced">
+        <strong>Experienced</strong>
+        <span>Years of woodworking under your belt</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ── QUESTION 2: Tools ── -->
+  <section id="screen-q2" class="screen">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="question-top">
+      <div id="recap-q2" class="recap-pill">
+        <span class="label">Building:</span>
+        <span class="value" id="recap-q2-text"></span>
+      </div>
+      <div class="step-badge">Step 2 of 3</div>
+      <h2>What tools do you have access to?</h2>
+      <p>We'll make sure all the steps suit your setup.</p>
+    </div>
+
+    <div class="choices">
+      <button class="choice-btn" data-value="Basic hand tools">
+        <strong>Basic hand tools</strong>
+        <span>Hammer, handsaw, chisel, mallet, screwdrivers — the essentials</span>
+      </button>
+      <button class="choice-btn" data-value="Power tools">
+        <strong>Power tools</strong>
+        <span>Drill, circular saw, jigsaw, random orbital sander</span>
+      </button>
+      <button class="choice-btn" data-value="Full workshop">
+        <strong>Full workshop</strong>
+        <span>Table saw, thicknesser, router, lathe — the works</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ── QUESTION 3: Timber ── -->
+  <section id="screen-q3" class="screen">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="question-top">
+      <div id="recap-q3" class="recap-pill">
+        <span class="label">Building:</span>
+        <span class="value" id="recap-q3-text"></span>
+      </div>
+      <div class="step-badge">Step 3 of 3</div>
+      <h2>Any timber preferences?</h2>
+      <p>Got a timber in mind? Type it below. Or we're happy to suggest something suitable for your project.</p>
+    </div>
+
+    <div class="timber-field">
+      <label for="timber-input">Your preference (optional)</label>
+      <div class="timber-input-row">
+        <input
+          type="text"
+          id="timber-input"
+          placeholder="e.g. Spotted Gum, Blackwood, Radiata Pine…"
+          maxlength="200"
+        >
+        <button id="btn-timber-use" class="btn-use">Use this timber</button>
+      </div>
+    </div>
+
+    <div class="or-divider"><span>or</span></div>
+
+    <button id="btn-timber-suggest" class="btn-suggest">Suggest the best timber for my project</button>
+  </section>
+
+  <!-- ── RESULTS SCREEN ── -->
+  <section id="screen-results" class="screen">
+    <div class="wordmark">
+      <div class="wordmark-top">
+        <div class="wordmark-name">woodworking.au</div>
+        <span class="beta-badge">Beta Testing</span>
+      </div>
+    </div>
+    <div class="wordmark-rule"></div>
+
+    <div class="results-top">
+      <h2>Your Project Plan</h2>
+      <p>Here's everything you need to get started.</p>
+    </div>
+
+    <div id="summary-card" class="summary-card"></div>
+
+    <div id="plan-output" class="plan-output">
+      <div class="plan-loading">
+        <div class="loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <p>Putting your plan together&hellip;</p>
+      </div>
+    </div>
+
+    <div id="results-footer" class="results-footer" style="display:none">
+      <button id="btn-new-project" class="btn-secondary">Plan another project</button>
+      <button id="btn-print" class="btn-secondary" onclick="window.print()">Print / Save as PDF</button>
+      <button id="btn-feedback-toggle" class="btn-secondary">Leave feedback</button>
+    </div>
+
+    <div id="feedback-section" class="feedback-section" style="display:none">
+      <div id="feedback-form-wrap" class="feedback-form open">
+        <p class="feedback-form-heading">How did we do?</p>
+
+        <div class="rating-row">
+          <button class="rating-btn" data-rating="1" aria-label="1 star">1</button>
+          <button class="rating-btn" data-rating="2" aria-label="2 stars">2</button>
+          <button class="rating-btn" data-rating="3" aria-label="3 stars">3</button>
+          <button class="rating-btn" data-rating="4" aria-label="4 stars">4</button>
+          <button class="rating-btn" data-rating="5" aria-label="5 stars">5</button>
+        </div>
+        <div class="rating-legend">
+          <span>1 = needs work</span>
+          <span>5 = love it!</span>
+        </div>
+
+        <textarea
+          id="feedback-comments"
+          class="feedback-comments"
+          placeholder="What could we do better, or what did you love?"
+          maxlength="1000"
+        ></textarea>
+
+        <button id="btn-submit-feedback" class="btn-feedback-submit">Submit Feedback</button>
+      </div>
+
+      <div id="feedback-message" style="display:none"></div>
+    </div>
+  </section>
+
+</div><!-- /.app -->
+
+<footer>
+  woodworking.au &mdash; For Australian hobby woodworkers
+</footer>
+
+<script>
+  // ── State ──
+  const state = {
+    project:    '',
+    variant:    null, // { name, description } chosen by user
+    experience: '',
+    tools:      '',
+    timber:     '',
+  };
+
+  let variantData = []; // holds the three fetched variants for index lookup
+
+  // ── Configure marked ──
+  marked.setOptions({ breaks: true, gfm: true });
+
+  // ── Screen management ──
+  function showScreen(id) {
+    const current = document.querySelector('.screen.visible');
+    const next = document.getElementById(id);
+    if (!next) return;
+
+    if (current && current !== next) {
+      current.classList.remove('visible');
+    }
+    next.classList.remove('visible');
+    // Force reflow so animation re-triggers
+    void next.offsetWidth;
+    next.classList.add('visible');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── Landing screen ──
+  document.getElementById('btn-start').addEventListener('click', () => {
+    const val = document.getElementById('project-input').value.trim();
+    if (!val) {
+      document.getElementById('project-input').focus();
+      return;
+    }
+    state.project = val;
+    updateRecaps();
+    showVariantsScreen();
+  });
+
+  document.getElementById('project-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      document.getElementById('btn-start').click();
+    }
+  });
+
+  // ── Question 1: Experience ──
+  document.querySelectorAll('#screen-q1 .choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.experience = btn.dataset.value;
+      showScreen('screen-q2');
+    });
+  });
+
+  // ── Question 2: Tools ──
+  document.querySelectorAll('#screen-q2 .choice-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.tools = btn.dataset.value;
+      showScreen('screen-q3');
+    });
+  });
+
+  // ── Question 3: Timber ──
+  document.getElementById('btn-timber-use').addEventListener('click', () => {
+    const val = document.getElementById('timber-input').value.trim();
+    if (!val) {
+      document.getElementById('timber-input').focus();
+      return;
+    }
+    state.timber = val;
+    startGenerating();
+  });
+
+  document.getElementById('timber-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      document.getElementById('btn-timber-use').click();
+    }
+  });
+
+  document.getElementById('btn-timber-suggest').addEventListener('click', () => {
+    state.timber = 'suggest';
+    startGenerating();
+  });
+
+  // ── "Plan another project" ──
+  document.getElementById('btn-new-project').addEventListener('click', resetApp);
+
+  // ── Variants screen ──
+  async function showVariantsScreen() {
+    document.getElementById('recap-variants-text').textContent = truncate(state.project, 55);
+    showScreen('screen-variants');
+
+    const loadingEl = document.getElementById('variants-loading');
+    const cardsEl   = document.getElementById('variants-cards');
+    const errorEl   = document.getElementById('variants-error');
+
+    loadingEl.style.display = 'flex';
+    cardsEl.style.display   = 'none';
+    errorEl.style.display   = 'none';
+    cardsEl.innerHTML = '';
+
+    try {
+      const resp = await fetch('/api/variants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: state.project }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data.variants) throw new Error(data.error || 'Bad response');
+
+      variantData = data.variants;
+      loadingEl.style.display = 'none';
+      renderVariantCards(variantData);
+      cardsEl.style.display = 'flex';
+    } catch (err) {
+      loadingEl.style.display = 'none';
+      errorEl.style.display   = 'block';
+    }
+  }
+
+  function renderVariantCards(variants) {
+    const cardsEl = document.getElementById('variants-cards');
+    cardsEl.innerHTML = variants.map((v, i) => `
+      <div class="variant-card">
+        <h3>${escHtml(v.name)}</h3>
+        <p>${escHtml(v.description)}</p>
+        <button class="btn-choose" data-index="${i}">Choose this design &rarr;</button>
+      </div>
+    `).join('');
+
+    cardsEl.querySelectorAll('.btn-choose').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.variant = variantData[parseInt(btn.dataset.index)];
+        showScreen('screen-q1');
+      });
+    });
+  }
+
+  document.getElementById('btn-variants-retry').addEventListener('click', showVariantsScreen);
+
+  // ── Update recap pills ──
+  function updateRecaps() {
+    ['variants', 'q1', 'q2', 'q3'].forEach(q => {
+      const el = document.getElementById(`recap-${q}-text`);
+      if (el) el.textContent = truncate(state.project, 55);
+    });
+  }
+
+  function truncate(str, max) {
+    return str.length > max ? str.slice(0, max).trimEnd() + '…' : str;
+  }
+
+  // ── Build summary card ──
+  function buildSummaryCard() {
+    const timberLabel = state.timber === 'suggest' ? 'To be suggested' : state.timber;
+    const items = [
+      ...(state.variant ? [{ label: 'Design',     value: state.variant.name }] : []),
+      { label: 'Project',     value: truncate(state.project, 60) },
+      { label: 'Experience',  value: state.experience },
+      { label: 'Tools',       value: state.tools },
+      { label: 'Timber',      value: timberLabel },
+    ];
+    document.getElementById('summary-card').innerHTML = items.map(i => `
+      <div class="summary-item">
+        <span class="s-label">${i.label}</span>
+        <span class="s-value">${escHtml(i.value)}</span>
+      </div>
+    `).join('');
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Generate plan ──
+  async function startGenerating() {
+    buildSummaryCard();
+    showScreen('screen-results');
+
+    const planEl = document.getElementById('plan-output');
+    const footerEl = document.getElementById('results-footer');
+    footerEl.style.display = 'none';
+
+    planEl.innerHTML = `
+      <div class="plan-loading">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <p>Putting your plan together&hellip;</p>
+      </div>`;
+
+    let accumulated = '';
+    let started    = false;
+    let splitPoint = null; // char index in accumulated where '## Materials' starts
+    let part2El    = null; // div holding content from Materials section onwards
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project:    state.project,
+          variant:    state.variant,
+          experience: state.experience,
+          tools:      state.tools,
+          timber:     state.timber,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          let parsed;
+          try { parsed = JSON.parse(raw); } catch { continue; }
+
+          if (parsed.error) {
+            planEl.innerHTML = `<p class="plan-error">Sorry — ${escHtml(parsed.error)}</p>`;
+            return;
+          }
+
+          if (parsed.text) {
+            accumulated += parsed.text;
+            if (!started) {
+              started = true;
+              planEl.innerHTML = `<div class="generating-badge">Writing your plan</div><div class="plan-body"></div>`;
+            }
+            const bodyEl = planEl.querySelector('.plan-body');
+            if (bodyEl) {
+              if (splitPoint === null) {
+                // Watch for the Materials heading to know when to insert the sketch slot
+                const matMatch = /\n##\s*Materials/i.exec(accumulated);
+                if (matMatch) {
+                  // Switch to split mode: freeze part1, insert sketch slot, start part2
+                  splitPoint = matMatch.index + 1; // skip the leading \n
+                  const before = accumulated.slice(0, splitPoint);
+                  const after  = accumulated.slice(splitPoint);
+
+                  const part1 = document.createElement('div');
+                  try { part1.innerHTML = marked.parse(before); } catch(e) { part1.textContent = before; }
+
+                  part2El = document.createElement('div');
+                  try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
+
+                  bodyEl.innerHTML = '';
+                  bodyEl.appendChild(part1);
+                  bodyEl.appendChild(makeSketchSection());
+                  bodyEl.appendChild(part2El);
+                } else {
+                  // Materials not yet seen — full re-render as normal
+                  try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
+                }
+              } else if (part2El) {
+                // Already split — only update the post-sketch section
+                const after = accumulated.slice(splitPoint);
+                try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
+              }
+            }
+          }
+
+          if (parsed.done) {
+            planEl.querySelector('.generating-badge')?.remove();
+
+            if (splitPoint !== null && part2El) {
+              // Final render of the post-sketch section, then fire the sketch
+              const after = accumulated.slice(splitPoint);
+              try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
+              const cutListMatch = after.match(/##\s*Materials[\s\S]*?(?=\n##|$)/i);
+              generateSketch(cutListMatch ? cutListMatch[0] : '');
+            } else {
+              // Materials section never appeared — render the whole plan, skip sketch
+              const bodyEl = planEl.querySelector('.plan-body');
+              if (bodyEl) {
+                try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
+              }
+            }
+            footerEl.style.display = 'flex';
+          }
+        }
+      }
+
+    } catch (err) {
+      console.error(err);
+      planEl.innerHTML = `<p class="plan-error">Something went wrong. Please check your connection and try again.</p>`;
+    }
+  }
+
+  // ── Sketch ──
+  function makeSketchSection() {
+    const section = document.createElement('div');
+    section.id = 'sketch-section';
+    section.className = 'sketch-section';
+    section.innerHTML = `
+      <div class="sketch-section-heading">Project Sketch</div>
+      <div class="sketch-box" id="sketch-box">
+        <div class="sketch-loading-row">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+          <span>Generating sketch&hellip;</span>
+        </div>
+      </div>`;
+    return section;
+  }
+
+  async function generateSketch(cutList) {
+    const sketchBox = document.getElementById('sketch-box');
+    if (!sketchBox) return;
+
+    try {
+      const resp = await fetch('/api/sketch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: state.project, cutList }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || data.error || !data.svg) {
+        sketchBox.innerHTML = `<p class="sketch-error">Sketch unavailable for this project.</p>`;
+        return;
+      }
+
+      sketchBox.innerHTML = data.svg;
+      const svg = sketchBox.querySelector('svg');
+      if (svg) {
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+        svg.setAttribute('width', '100%');
+        svg.setAttribute('height', 'auto');
+      }
+    } catch (err) {
+      sketchBox.innerHTML = `<p class="sketch-error">Sketch unavailable for this project.</p>`;
+    }
+  }
+
+  // ── Feedback ──
+  let feedbackRating = null;
+
+  // Toggle the feedback section open/closed
+  document.getElementById('btn-feedback-toggle').addEventListener('click', () => {
+    const section = document.getElementById('feedback-section');
+    const isOpen  = section.style.display !== 'none';
+    section.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+      section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  // Rating buttons
+  document.querySelectorAll('.rating-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      feedbackRating = parseInt(btn.dataset.rating, 10);
+      document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  // Submit feedback to Formspree
+  document.getElementById('btn-submit-feedback').addEventListener('click', async () => {
+    const comments   = document.getElementById('feedback-comments').value.trim();
+    const submitBtn  = document.getElementById('btn-submit-feedback');
+    const msgEl      = document.getElementById('feedback-message');
+    const formWrapEl = document.getElementById('feedback-form-wrap');
+
+    if (!feedbackRating) {
+      // Briefly highlight the rating row if no rating chosen
+      document.querySelector('.rating-row').style.outline = '2px solid var(--timber-light)';
+      setTimeout(() => document.querySelector('.rating-row').style.outline = '', 1200);
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+
+    try {
+      const resp = await fetch('https://formspree.io/f/mlgzpopa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ rating: feedbackRating, comments }),
+      });
+
+      if (resp.ok) {
+        formWrapEl.style.display = 'none';
+        msgEl.className = 'feedback-message success';
+        msgEl.textContent = 'Thanks for your feedback — it helps us improve!';
+        msgEl.style.display = 'block';
+      } else {
+        throw new Error('Non-OK response');
+      }
+    } catch {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Feedback';
+      msgEl.className = 'feedback-message error';
+      msgEl.textContent = 'Something went wrong — please try again.';
+      msgEl.style.display = 'block';
+    }
+  });
+
+  // ── Reset ──
+  function resetApp() {
+    state.project    = '';
+    state.variant    = null;
+    state.experience = '';
+    state.tools      = '';
+    state.timber     = '';
+
+    document.getElementById('project-input').value = '';
+    document.getElementById('timber-input').value  = '';
+    document.getElementById('plan-output').innerHTML = '';
+    document.getElementById('results-footer').style.display = 'none';
+
+    // Reset feedback
+    feedbackRating = null;
+    document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('feedback-comments').value = '';
+    document.getElementById('feedback-section').style.display = 'none';
+    document.getElementById('feedback-form-wrap').style.display = 'block';
+    document.getElementById('feedback-message').style.display  = 'none';
+    document.getElementById('btn-submit-feedback').disabled    = false;
+    document.getElementById('btn-submit-feedback').textContent = 'Submit Feedback';
+
+    showScreen('screen-landing');
+    setTimeout(() => document.getElementById('project-input').focus(), 400);
+  }
+</script>
+
+</body>
+</html>
