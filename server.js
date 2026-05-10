@@ -402,5 +402,5 @@ function xmlEsc(s) {
 }
 
 app.listen(PORT, () => {
-  console.log(`woodworking.au Project Planner → http://localhost:${PORT}`);
+  console.log(`woodwork-studio.com Project Planner → http://localhost:${PORT}`);
 });
