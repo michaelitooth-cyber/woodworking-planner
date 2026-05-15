@@ -221,15 +221,7 @@ app.post('/api/sketch', async (req, res) => {
 
   const cutListText = (typeof cutList === 'string' ? cutList : '').slice(0, 1600);
 
-  // Extract a few component names from the cut list for the image prompt
-  const components = cutListText
-    .split('\n')
-    .map(l => l.replace(/^[\s\-\*\d\.)]+/, '').replace(/\s*\d.*$/, '').trim())
-    .filter(l => /^[A-Za-z]/.test(l) && l.length > 2 && l.length < 40)
-    .slice(0, 5)
-    .join(', ');
-
-  const prompt = `Isometric technical illustration of a ${project}, woodworking project, clean line drawing style, white background, labelled parts showing ${components || 'key structural components'}, no measurements, no dimension lines, no numbers, warm timber workshop aesthetic, professional woodworking plan style`;
+  const prompt = `Isometric illustration of a ${project}, woodworking project, clean line drawing style, white background, showing structure and form only, no text, no labels, no callouts, no annotations, no words, no letters of any kind in the image, no measurements, no dimension lines, no numbers, warm timber workshop aesthetic, professional woodworking plan style`;
 
   try {
     const image = await generateImagenImage(prompt);
