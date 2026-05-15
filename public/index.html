@@ -751,6 +751,19 @@
       box-shadow: var(--shadow-sm);
       transition: border-color 0.18s, box-shadow 0.18s;
     }
+    .variant-card--has-image {
+      padding-top: 0;
+      overflow: hidden;
+    }
+    .variant-card-image {
+      display: block;
+      width: calc(100% + 40px);
+      margin-left: -20px;
+      margin-right: -20px;
+      margin-bottom: 18px;
+      height: 210px;
+      object-fit: cover;
+    }
     .variant-card:hover {
       border-color: var(--timber-light);
       box-shadow: var(--shadow);
@@ -1199,7 +1212,8 @@
   function renderVariantCards(variants) {
     const cardsEl = document.getElementById('variants-cards');
     cardsEl.innerHTML = variants.map((v, i) => `
-      <div class="variant-card">
+      <div class="variant-card${v.image ? ' variant-card--has-image' : ''}">
+        ${v.image ? `<img class="variant-card-image" src="${v.image}" alt="${escHtml(v.name)}">` : ''}
         <h3>${escHtml(v.name)}</h3>
         <p>${escHtml(v.description)}</p>
         <button class="btn-choose" data-index="${i}">Choose this design &rarr;</button>
@@ -1395,6 +1409,7 @@
   }
 
   async function generateSketch(cutList) {
+    const sketchSection = document.getElementById('sketch-section');
     const sketchBox = document.getElementById('sketch-box');
     if (!sketchBox) return;
 
@@ -1407,21 +1422,19 @@
 
       const data = await resp.json();
 
-      if (!resp.ok || data.error || !data.svg) {
-        sketchBox.innerHTML = `<p class="sketch-error">Sketch unavailable for this project.</p>`;
+      if (!resp.ok || !data.image) {
+        sketchSection?.remove();
         return;
       }
 
-      sketchBox.innerHTML = data.svg;
-      const svg = sketchBox.querySelector('svg');
-      if (svg) {
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
-        svg.setAttribute('width', '100%');
-        svg.setAttribute('height', 'auto');
-      }
+      const img = document.createElement('img');
+      img.src = data.image;
+      img.alt = 'Project sketch';
+      img.style.cssText = 'display:block;width:100%;height:auto;border-radius:4px;';
+      sketchBox.innerHTML = '';
+      sketchBox.appendChild(img);
     } catch (err) {
-      sketchBox.innerHTML = `<p class="sketch-error">Sketch unavailable for this project.</p>`;
+      sketchSection?.remove();
     }
   }
 
