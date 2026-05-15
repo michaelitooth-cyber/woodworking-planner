@@ -1290,7 +1290,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project:    state.project,
-          variant:    state.variant,
+          variant:    state.variant ? { name: state.variant.name, description: state.variant.description } : null,
           experience: state.experience,
           tools:      state.tools,
           timber:     state.timber,
