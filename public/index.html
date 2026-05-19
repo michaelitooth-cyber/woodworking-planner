@@ -1289,11 +1289,12 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          project:    state.project,
-          variant:    state.variant ? { name: state.variant.name, description: state.variant.description } : null,
-          experience: state.experience,
-          tools:      state.tools,
-          timber:     state.timber,
+          project:      state.project,
+          variant:      state.variant ? { name: state.variant.name, description: state.variant.description } : null,
+          variantImage: state.variant?.image ?? null,
+          experience:   state.experience,
+          tools:        state.tools,
+          timber:       state.timber,
         }),
       });
 
@@ -1369,11 +1370,10 @@
             planEl.querySelector('.generating-badge')?.remove();
 
             if (splitPoint !== null && part2El) {
-              // Final render of the post-sketch section, then fire the sketch
+              // Final render of the post-sketch section, then populate sketch from variant image
               const after = accumulated.slice(splitPoint);
               try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
-              const cutListMatch = after.match(/##\s*Materials[\s\S]*?(?=\n##|$)/i);
-              generateSketch(cutListMatch ? cutListMatch[0] : '');
+              showVariantSketch();
             } else {
               // Materials section never appeared — render the whole plan, skip sketch
               const bodyEl = planEl.querySelector('.plan-body');
@@ -1402,40 +1402,29 @@
       <div class="sketch-box" id="sketch-box">
         <div class="sketch-loading-row">
           <div class="loading-dots"><span></span><span></span><span></span></div>
-          <span>Generating sketch&hellip;</span>
+          <span>Loading sketch&hellip;</span>
         </div>
       </div>`;
     return section;
   }
 
-  async function generateSketch(cutList) {
+  function showVariantSketch() {
     const sketchSection = document.getElementById('sketch-section');
     const sketchBox = document.getElementById('sketch-box');
     if (!sketchBox) return;
 
-    try {
-      const resp = await fetch('/api/sketch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: state.project, cutList }),
-      });
-
-      const data = await resp.json();
-
-      if (!resp.ok || !data.image) {
-        sketchSection?.remove();
-        return;
-      }
-
-      const img = document.createElement('img');
-      img.src = data.image;
-      img.alt = 'Project sketch';
-      img.style.cssText = 'display:block;width:100%;height:auto;border-radius:4px;';
-      sketchBox.innerHTML = '';
-      sketchBox.appendChild(img);
-    } catch (err) {
+    const image = state.variant?.image;
+    if (!image) {
       sketchSection?.remove();
+      return;
     }
+
+    const img = document.createElement('img');
+    img.src = image;
+    img.alt = 'Project sketch';
+    img.style.cssText = 'display:block;width:100%;height:auto;border-radius:4px;';
+    sketchBox.innerHTML = '';
+    sketchBox.appendChild(img);
   }
 
   // ── Feedback ──

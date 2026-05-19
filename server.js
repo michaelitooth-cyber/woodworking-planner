@@ -123,7 +123,7 @@ Return exactly this structure:
 });
 
 app.post('/api/generate', async (req, res) => {
-  const { project, experience, tools, timber, variant } = req.body;
+  const { project, experience, tools, timber, variant, variantImage } = req.body;
 
   if (!project || !experience || !tools || !timber) {
     return res.status(400).json({ error: 'Missing required fields.' });
@@ -179,12 +179,30 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
 ## A Few Tips
 2–3 practical tips specific to this project and design approach — things that will make a real difference.`;
 
+  // Build multimodal content when the selected variant image is provided
+  let messageContent = userMessage;
+  if (variantImage && typeof variantImage === 'string') {
+    const imgMatch = variantImage.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (imgMatch) {
+      messageContent = [
+        {
+          type: 'image',
+          source: { type: 'base64', media_type: imgMatch[1], data: imgMatch[2] },
+        },
+        {
+          type: 'text',
+          text: `The image above shows the selected design variant: "${variant?.name ?? ''}". Use it as a visual reference when writing the build plan — the structure, proportions, and features visible in the image should be reflected in the instructions.\n\n${userMessage}`,
+        },
+      ];
+    }
+  }
+
   try {
     const stream = client.messages.stream({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userMessage }],
+      messages: [{ role: 'user', content: messageContent }],
     });
 
     stream.on('text', (text) => {
@@ -211,26 +229,6 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
   }
 });
 
-// The client sends only the extracted Materials/Cut List section, not the full plan.
-// This keeps the sketch call small and completely independent of the plan's token budget.
-app.post('/api/sketch', async (req, res) => {
-  const { project, cutList } = req.body;
-  if (!project || typeof project !== 'string') {
-    return res.status(400).json({ error: 'Missing project.' });
-  }
-
-  const cutListText = (typeof cutList === 'string' ? cutList : '').slice(0, 1600);
-
-  const prompt = `Isometric illustration of a ${project}, woodworking project, clean line drawing style, white background, showing structure and form only, no text, no labels, no callouts, no annotations, no words, no letters of any kind in the image, no measurements, no dimension lines, no numbers, warm timber workshop aesthetic, professional woodworking plan style`;
-
-  try {
-    const image = await generateImagenImage(prompt);
-    res.json(image ? { image } : {});
-  } catch (err) {
-    console.warn('[sketch] Imagen call failed:', err.message);
-    res.json({});
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`woodwork-studio.com Project Planner → http://localhost:${PORT}`);
