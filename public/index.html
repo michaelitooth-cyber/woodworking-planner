@@ -8,6 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-MGDRS028FS"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-MGDRS028FS');
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
   <style>
     *, *::before, *::after {
@@ -1223,6 +1230,7 @@
     cardsEl.querySelectorAll('.btn-choose').forEach(btn => {
       btn.addEventListener('click', () => {
         state.variant = variantData[parseInt(btn.dataset.index)];
+        gtag('event', 'variant_selected', { variant_name: state.variant.name });
         showScreen('screen-q1');
       });
     });
@@ -1381,6 +1389,7 @@
                 try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
               }
             }
+            gtag('event', 'plan_generated', { project_description: state.project });
             footerEl.style.display = 'flex';
           }
         }
@@ -1436,6 +1445,7 @@
     const isOpen  = section.style.display !== 'none';
     section.style.display = isOpen ? 'none' : 'block';
     if (!isOpen) {
+      gtag('event', 'feedback_opened');
       section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   });
