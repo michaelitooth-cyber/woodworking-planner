@@ -626,6 +626,40 @@
       align-items: center;
     }
 
+    /* Ko-fi widget normalisation — matches btn-secondary sizing */
+    #kofi-btn-wrap {
+      display: inline-flex;
+      align-items: center;
+    }
+    #kofi-btn-wrap > div {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    #kofi-btn-wrap .kofi-button {
+      display: inline-flex !important;
+      align-items: center !important;
+      padding: 10px 20px !important;
+      font-family: inherit !important;
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      border-radius: var(--radius-sm) !important;
+      border: 2px solid transparent !important;
+      line-height: 1.2 !important;
+      white-space: nowrap !important;
+      transition: opacity 0.18s !important;
+    }
+    #kofi-btn-wrap .kofi-button:hover { opacity: 0.88 !important; }
+    #kofi-btn-wrap .kofitext {
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+    }
+    #kofi-btn-wrap .kofiimg {
+      height: 18px !important;
+      width: auto !important;
+      margin: 0 !important;
+    }
+
     /* ── Feedback ── */
     .feedback-section {
       margin-top: 32px;
@@ -1055,6 +1089,10 @@
       <button id="btn-new-project" class="btn-secondary">Plan another project</button>
       <button id="btn-print" class="btn-secondary" onclick="window.print()">Print / Save as PDF</button>
       <button id="btn-feedback-toggle" class="btn-secondary">Leave feedback</button>
+      <div id="kofi-btn-wrap">
+        <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+        <script type='text/javascript'>kofiwidget2.init('Support this tool', '#8B5E3C', 'X2M4203MOI');kofiwidget2.draw();</script>
+      </div>
     </div>
 
     <div id="feedback-section" class="feedback-section" style="display:none">
@@ -1447,6 +1485,13 @@
     if (!isOpen) {
       gtag('event', 'feedback_opened');
       section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+
+  // Ko-fi click tracking — event delegation so it works after widget renders
+  document.getElementById('results-footer').addEventListener('click', (e) => {
+    if (e.target.closest('#kofi-btn-wrap a')) {
+      gtag('event', 'kofi_clicked');
     }
   });
 
