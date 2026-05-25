@@ -944,6 +944,16 @@
       text-align: center;
       padding: 8px 0;
     }
+    .vr-attribution {
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: right;
+    }
+    /* Used when joinery panel is hidden — parts image fills full width */
+    .visual-ref-grid--single {
+      grid-template-columns: 1fr;
+    }
 
     /* ── Print ── */
     @media print {
@@ -1211,16 +1221,12 @@
             </div>
           </div>
         </div>
-        <div class="visual-ref-panel">
+        <div class="visual-ref-panel" id="vr-joinery-panel">
           <div class="vr-label">Key Joinery Detail</div>
-          <div class="vr-body" id="vr-joinery-body">
-            <div class="sketch-loading-row">
-              <div class="loading-dots"><span></span><span></span><span></span></div>
-              <span>Generating&hellip;</span>
-            </div>
-          </div>
+          <div class="vr-body" id="vr-joinery-body"></div>
         </div>
       </div>
+      <p class="vr-attribution">Joint diagrams: Wikimedia Commons (CC BY-SA)</p>
     </div>
 
     <div id="results-footer" class="results-footer" style="display:none">
@@ -1637,59 +1643,68 @@
   }
 
   // ── Visual Reference ──
-  function extractJoinery(text) {
-    const terms = [
-      'mortise and tenon', 'mortise & tenon', 'mortise-and-tenon',
-      'dovetail joint', 'dovetail',
-      'finger joint', 'box joint',
-      'dado joint', 'dado',
-      'rabbet joint', 'rabbet', 'rebate joint', 'rebate',
-      'half-lap joint', 'half lap joint', 'halving joint', 'half-lap', 'half lap',
-      'pocket hole joinery', 'pocket hole', 'pocket screw',
-      'biscuit joint', 'biscuit joinery',
-      'dowel joint', 'dowel',
-      'bridle joint',
-      'lap joint',
-      'butt joint',
-    ];
-    const lower = text.toLowerCase();
-    for (const term of terms) {
-      if (lower.includes(term)) return term;
-    }
-    return 'butt joint';
+
+  // Maps plan text to a static joinery library image.
+  // Returns a URL path string, or null to hide the joinery panel.
+  function matchJoineryImage(text) {
+    const t = text.toLowerCase();
+    if (t.includes('mortise') || t.includes('tenon'))          return '/joinery-library/Mortise-tenon.svg';
+    if (t.includes('dovetail'))                                 return '/joinery-library/Dovetail-joint.png';
+    if (t.includes('bridle'))                                   return '/joinery-library/Bridle-Joint.svg';
+    if (t.includes('lap joint') || t.includes('halving'))       return '/joinery-library/Lap-joint.png';
+    if (t.includes('housing') || t.includes('dado'))            return '/joinery-library/housing-joint.png';
+    if (t.includes('mitre') || t.includes('miter'))             return '/joinery-library/Mitre-joint.png';
+    if (t.includes('dowel') || t.includes('domino'))            return '/joinery-library/Dowel-joint.png';
+    // Fastener-only approaches — no diagram to show
+    if (t.includes('screw') || t.includes('butt joint') || t.includes('pocket')) return null;
+    return null; // no recognised joinery
   }
 
   async function generateVisualReference() {
-    const btn       = document.getElementById('btn-visual-ref');
-    const vrSection = document.getElementById('visual-ref-section');
-    const partsBody   = document.getElementById('vr-parts-body');
-    const joineryBody = document.getElementById('vr-joinery-body');
+    const btn          = document.getElementById('btn-visual-ref');
+    const vrSection    = document.getElementById('visual-ref-section');
+    const partsBody    = document.getElementById('vr-parts-body');
+    const joineryBody  = document.getElementById('vr-joinery-body');
+    const joineryPanel = document.getElementById('vr-joinery-panel');
+    const grid         = vrSection.querySelector('.visual-ref-grid');
 
     btn.disabled    = true;
     btn.textContent = 'Generating…';
 
-    // Reset panels to loading state
-    const loadingHtml = `
+    // Resolve joinery image immediately from the static library
+    const joineryImagePath = matchJoineryImage(vrPlanText);
+
+    if (joineryImagePath) {
+      joineryPanel.style.display = '';
+      grid.classList.remove('visual-ref-grid--single');
+      const img = document.createElement('img');
+      img.src = joineryImagePath;
+      img.alt = 'Key joinery detail';
+      joineryBody.innerHTML = '';
+      joineryBody.appendChild(img);
+    } else {
+      // No matching diagram — hide the panel and let parts fill full width
+      joineryPanel.style.display = 'none';
+      grid.classList.add('visual-ref-grid--single');
+    }
+
+    // Parts panel still needs the Gemini call
+    partsBody.innerHTML = `
       <div class="sketch-loading-row">
         <div class="loading-dots"><span></span><span></span><span></span></div>
         <span>Generating&hellip;</span>
       </div>`;
-    partsBody.innerHTML   = loadingHtml;
-    joineryBody.innerHTML = loadingHtml;
 
     vrSection.style.display = 'block';
     vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    const joinery = extractJoinery(vrPlanText);
 
     try {
       const resp = await fetch('/api/visual-reference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          project:  state.project,
-          cutList:  vrCutList.slice(0, 1400),
-          joinery,
+          project: state.project,
+          cutList: vrCutList.slice(0, 1400),
         }),
       });
 
@@ -1705,22 +1720,11 @@
         partsBody.innerHTML = '<p class="vr-error">Could not generate image.</p>';
       }
 
-      if (data.joineryImage) {
-        const img = document.createElement('img');
-        img.src = data.joineryImage;
-        img.alt = 'Key joinery detail';
-        joineryBody.innerHTML = '';
-        joineryBody.appendChild(img);
-      } else {
-        joineryBody.innerHTML = '<p class="vr-error">Could not generate image.</p>';
-      }
-
       btn.textContent = 'Visual Reference Generated ✓';
       gtag('event', 'visual_reference_generated', { project_description: state.project });
 
     } catch (err) {
-      partsBody.innerHTML   = '<p class="vr-error">Something went wrong. Please try again.</p>';
-      joineryBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
+      partsBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
       btn.disabled    = false;
       btn.textContent = 'View Visual Reference';
     }

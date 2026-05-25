@@ -230,71 +230,23 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
 });
 
 
-// Returns a joint-specific partial-assembly description for the Gemini prompt.
-// Keeps the primary subject (the joint name) explicit and tells Imagen exactly
-// what to show so the correct joint is depicted.
-function joineryAssemblyDetail(joint) {
-  const map = {
-    'mortise and tenon':   'partially assembled to show both the mortise (the hole) and the tenon (the tongue) clearly',
-    'mortise & tenon':     'partially assembled to show both the mortise (the hole) and the tenon (the tongue) clearly',
-    'mortise-and-tenon':   'partially assembled to show both the mortise (the hole) and the tenon (the tongue) clearly',
-    'dovetail joint':      'partially assembled to show the interlocking dovetail pins and tails clearly separated and about to engage',
-    'dovetail':            'partially assembled to show the interlocking dovetail pins and tails clearly separated and about to engage',
-    'finger joint':        'partially assembled to show the interlocking rectangular fingers of equal width on both pieces',
-    'box joint':           'partially assembled to show the interlocking rectangular fingers of equal width on both pieces',
-    'dado joint':          'partially assembled to show the rectangular dado groove cut across one board and the mating shelf fitting into it',
-    'dado':                'partially assembled to show the rectangular dado groove cut across one board and the mating shelf fitting into it',
-    'rabbet joint':        'partially assembled to show the step-shaped rabbet cut along the edge of one board and the mating piece fitting flush into it',
-    'rabbet':              'partially assembled to show the step-shaped rabbet cut along the edge of one board and the mating piece fitting flush into it',
-    'rebate joint':        'partially assembled to show the step-shaped rebate cut along the edge of one board and the mating piece fitting flush into it',
-    'rebate':              'partially assembled to show the step-shaped rebate cut along the edge of one board and the mating piece fitting flush into it',
-    'half-lap joint':      'partially assembled to show both boards with matching half-thickness notches that interlock flush',
-    'half lap joint':      'partially assembled to show both boards with matching half-thickness notches that interlock flush',
-    'halving joint':       'partially assembled to show both boards with matching half-thickness notches that interlock flush',
-    'half-lap':            'partially assembled to show both boards with matching half-thickness notches that interlock flush',
-    'half lap':            'partially assembled to show both boards with matching half-thickness notches that interlock flush',
-    'pocket hole joinery': 'partially assembled to show the angled pocket hole bored into one board and the screw pulling it tight against the mating piece',
-    'pocket hole':         'partially assembled to show the angled pocket hole bored into one board and the screw pulling it tight against the mating piece',
-    'pocket screw':        'partially assembled to show the angled pocket hole bored into one board and the screw pulling it tight against the mating piece',
-    'biscuit joint':       'partially assembled to show the matching oval slots cut into both boards and the compressed biscuit spline about to be inserted',
-    'biscuit joinery':     'partially assembled to show the matching oval slots cut into both boards and the compressed biscuit spline about to be inserted',
-    'dowel joint':         'partially assembled to show the aligned round holes drilled into both boards and the cylindrical dowel pin bridging them',
-    'dowel':               'partially assembled to show the aligned round holes drilled into both boards and the cylindrical dowel pin bridging them',
-    'bridle joint':        'partially assembled to show the open slot mortise on one piece and the tenon tongue of the mating piece about to slide in',
-    'lap joint':           'partially assembled to show the two boards overlapping with the step cuts that keep them flush on both faces',
-    'butt joint':          'showing two boards butted squarely end-to-face, with the glue line and the grain direction of each piece clearly visible',
-  };
-  return map[joint.toLowerCase()] ?? 'partially assembled to clearly show how the two timber pieces connect and interlock';
-}
-
 app.post('/api/visual-reference', async (req, res) => {
-  const { project, cutList, joinery } = req.body;
+  const { project, cutList } = req.body;
   if (!project || typeof project !== 'string') {
     return res.status(400).json({ error: 'Missing project.' });
   }
 
-  const cutListText = (typeof cutList  === 'string' ? cutList  : '').slice(0, 1400);
-  const joineryText = (typeof joinery  === 'string' ? joinery  : 'butt joint').slice(0, 100);
+  const cutListText = (typeof cutList === 'string' ? cutList : '').slice(0, 1400);
 
   const partsList = cutListText ? ` The cut list for this project is as follows — use these parts and their dimensions to determine the relative proportions of each piece in the illustration: ${cutListText.slice(0, 600)}` : '';
   const partsPrompt = `Workshop flat-lay illustration of all the individual timber components for a ${project} woodworking project, arranged on a pure white background. Each timber piece is drawn as a three-dimensional plank or board showing natural wood grain and warm timber tones, with accurate relative proportions — longer pieces appear visibly longer than shorter ones, wider boards appear wider, thicker stock appears thicker. Pieces are clearly separated from each other with generous spacing. Arranged in logical groups by component type (e.g. legs together, rails together, panels together, shelves together). Clean, detailed, professional woodworking workshop illustration style, top-down perspective with a slight isometric tilt to show thickness. Each timber piece should be drawn with accurate relative proportions — longer pieces should appear visibly longer than shorter ones. Arrange pieces in logical groups by component type. No text, no labels, no dimensions anywhere in the image.${partsList}`;
 
-  const assemblyDetail = joineryAssemblyDetail(joineryText);
-  const joineryPrompt = `Show a single ${joineryText} woodworking joint in close-up isometric view, ${assemblyDetail}. Warm light timber, clean workshop aesthetic, no text, no labels, white background.`;
-
   try {
-    const [partsResult, joineryResult] = await Promise.allSettled([
-      generateImagenImage(partsPrompt),
-      generateImagenImage(joineryPrompt),
-    ]);
-
-    res.json({
-      partsImage:   partsResult.status   === 'fulfilled' ? partsResult.value   : null,
-      joineryImage: joineryResult.status === 'fulfilled' ? joineryResult.value : null,
-    });
+    const image = await generateImagenImage(partsPrompt);
+    res.json({ partsImage: image ?? null });
   } catch (err) {
     console.warn('[visual-reference] Error:', err.message);
-    res.json({ partsImage: null, joineryImage: null });
+    res.json({ partsImage: null });
   }
 });
 
