@@ -1209,26 +1209,6 @@
       </div>
     </div>
 
-    <div id="visual-ref-section" class="visual-ref-section" style="display:none">
-      <div class="visual-ref-heading">Visual Reference Sheet</div>
-      <div class="visual-ref-grid">
-        <div class="visual-ref-panel">
-          <div class="vr-label">Parts Overview</div>
-          <div class="vr-body" id="vr-parts-body">
-            <div class="sketch-loading-row">
-              <div class="loading-dots"><span></span><span></span><span></span></div>
-              <span>Generating&hellip;</span>
-            </div>
-          </div>
-        </div>
-        <div class="visual-ref-panel" id="vr-joinery-panel">
-          <div class="vr-label">Key Joinery Detail</div>
-          <div class="vr-body" id="vr-joinery-body"></div>
-        </div>
-      </div>
-      <p class="vr-attribution">Joint diagrams: Wikimedia Commons (CC BY-SA)</p>
-    </div>
-
     <div id="results-footer" class="results-footer" style="display:none">
       <button id="btn-new-project" class="btn-secondary">Plan another project</button>
       <button id="btn-print" class="btn-secondary" onclick="window.print()">Print / Save as PDF</button>
@@ -1661,43 +1641,63 @@
   }
 
   async function generateVisualReference() {
-    const btn          = document.getElementById('btn-visual-ref');
-    const vrSection    = document.getElementById('visual-ref-section');
-    const partsBody    = document.getElementById('vr-parts-body');
-    const joineryBody  = document.getElementById('vr-joinery-body');
-    const joineryPanel = document.getElementById('vr-joinery-panel');
-    const grid         = vrSection.querySelector('.visual-ref-grid');
-
+    const btn = document.getElementById('btn-visual-ref');
+    if (!btn) return;
     btn.disabled    = true;
     btn.textContent = 'Generating…';
 
-    // Resolve joinery image immediately from the static library
+    // Resolve joinery from the static library — synchronous, no API needed
     const joineryImagePath = matchJoineryImage(vrPlanText);
+    console.log('[VR] joinery match →', joineryImagePath ?? '(no match — panel hidden)');
 
-    if (joineryImagePath) {
-      joineryPanel.style.display = '';
-      grid.classList.remove('visual-ref-grid--single');
+    const hasJoinery = Boolean(joineryImagePath);
+
+    // Remove any previously generated sheet (e.g. if button clicked twice)
+    const vrBar = btn.closest('.visual-ref-bar');
+    const existing = vrBar?.nextElementSibling;
+    if (existing?.classList.contains('visual-ref-section')) existing.remove();
+
+    // Build the Visual Reference Sheet inline and insert it immediately
+    // after the button, so it sits right below the Materials/Cut List section
+    const vrSection = document.createElement('div');
+    vrSection.className = 'visual-ref-section';
+    vrSection.innerHTML = `
+      <div class="visual-ref-heading">Visual Reference Sheet</div>
+      <div class="visual-ref-grid${hasJoinery ? '' : ' visual-ref-grid--single'}">
+        <div class="visual-ref-panel">
+          <div class="vr-label">Parts Overview</div>
+          <div class="vr-body" id="vr-parts-body">
+            <div class="sketch-loading-row">
+              <div class="loading-dots"><span></span><span></span><span></span></div>
+              <span>Generating&hellip;</span>
+            </div>
+          </div>
+        </div>
+        ${hasJoinery ? `
+        <div class="visual-ref-panel">
+          <div class="vr-label">Key Joinery Detail</div>
+          <div class="vr-body" id="vr-joinery-body"></div>
+        </div>` : ''}
+      </div>
+      <p class="vr-attribution">Joint diagrams: Wikimedia Commons (CC BY-SA)</p>`;
+
+    if (vrBar) {
+      vrBar.insertAdjacentElement('afterend', vrSection);
+    } else {
+      // Fallback: append inside plan-output
+      document.getElementById('plan-output')?.appendChild(vrSection);
+    }
+    vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Populate joinery panel immediately from static file — no wait needed
+    if (hasJoinery) {
       const img = document.createElement('img');
       img.src = joineryImagePath;
       img.alt = 'Key joinery detail';
-      joineryBody.innerHTML = '';
-      joineryBody.appendChild(img);
-    } else {
-      // No matching diagram — hide the panel and let parts fill full width
-      joineryPanel.style.display = 'none';
-      grid.classList.add('visual-ref-grid--single');
+      document.getElementById('vr-joinery-body').appendChild(img);
     }
 
-    // Parts panel still needs the Gemini call
-    partsBody.innerHTML = `
-      <div class="sketch-loading-row">
-        <div class="loading-dots"><span></span><span></span><span></span></div>
-        <span>Generating&hellip;</span>
-      </div>`;
-
-    vrSection.style.display = 'block';
-    vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
+    // Fetch parts image (Gemini — async)
     try {
       const resp = await fetch('/api/visual-reference', {
         method: 'POST',
@@ -1708,7 +1708,8 @@
         }),
       });
 
-      const data = await resp.json();
+      const data  = await resp.json();
+      const partsBody = document.getElementById('vr-parts-body');
 
       if (data.partsImage) {
         const img = document.createElement('img');
@@ -1724,7 +1725,8 @@
       gtag('event', 'visual_reference_generated', { project_description: state.project });
 
     } catch (err) {
-      partsBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
+      const partsBody = document.getElementById('vr-parts-body');
+      if (partsBody) partsBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
       btn.disabled    = false;
       btn.textContent = 'View Visual Reference';
     }
@@ -1814,10 +1816,9 @@
     document.getElementById('plan-output').innerHTML = '';
     document.getElementById('results-footer').style.display  = 'none';
 
-    // Reset visual reference (bar is inside plan-output so cleared above)
+    // Reset visual reference (button + sheet live inside plan-output, cleared above)
     vrPlanText = '';
     vrCutList  = '';
-    document.getElementById('visual-ref-section').style.display = 'none';
 
     // Reset feedback
     feedbackRating = null;
