@@ -867,9 +867,8 @@
 
     /* ── Visual Reference ── */
     .visual-ref-bar {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 10px;
+      margin-top: 24px;
+      margin-bottom: 8px;
     }
     .btn-visual-ref {
       display: inline-flex;
@@ -1190,10 +1189,6 @@
     </div>
 
     <div id="summary-card" class="summary-card"></div>
-
-    <div id="visual-ref-bar" class="visual-ref-bar" style="display:none">
-      <button id="btn-visual-ref" class="btn-visual-ref">View Visual Reference</button>
-    </div>
 
     <div id="plan-output" class="plan-output">
       <div class="plan-loading">
@@ -1574,9 +1569,25 @@
                 try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
               }
             }
-            // Store plan text for visual reference, then reveal the trigger button
+            // Store plan text then inject the visual reference trigger
+            // button into part2El, immediately before the next section heading
             vrPlanText = accumulated;
-            document.getElementById('visual-ref-bar').style.display = 'flex';
+            if (part2El) {
+              const vrBar = document.createElement('div');
+              vrBar.className = 'visual-ref-bar';
+              const vrBtn = document.createElement('button');
+              vrBtn.id        = 'btn-visual-ref';
+              vrBtn.className = 'btn-visual-ref';
+              vrBtn.textContent = 'View Visual Reference';
+              vrBar.appendChild(vrBtn);
+              const h2s = part2El.querySelectorAll('h2');
+              if (h2s.length >= 2) {
+                part2El.insertBefore(vrBar, h2s[1]); // before Step-by-Step heading
+              } else {
+                part2El.appendChild(vrBar);          // fallback: end of section
+              }
+              vrBtn.addEventListener('click', generateVisualReference);
+            }
 
             gtag('event', 'plan_generated', { project_description: state.project });
             footerEl.style.display = 'flex';
@@ -1648,7 +1659,7 @@
     return 'butt joint';
   }
 
-  document.getElementById('btn-visual-ref').addEventListener('click', async () => {
+  async function generateVisualReference() {
     const btn       = document.getElementById('btn-visual-ref');
     const vrSection = document.getElementById('visual-ref-section');
     const partsBody   = document.getElementById('vr-parts-body');
@@ -1713,7 +1724,7 @@
       btn.disabled    = false;
       btn.textContent = 'View Visual Reference';
     }
-  });
+  }
 
   // ── Feedback ──
   let feedbackRating = null;
@@ -1799,13 +1810,10 @@
     document.getElementById('plan-output').innerHTML = '';
     document.getElementById('results-footer').style.display  = 'none';
 
-    // Reset visual reference
+    // Reset visual reference (bar is inside plan-output so cleared above)
     vrPlanText = '';
     vrCutList  = '';
-    document.getElementById('visual-ref-bar').style.display     = 'none';
     document.getElementById('visual-ref-section').style.display = 'none';
-    document.getElementById('btn-visual-ref').disabled    = false;
-    document.getElementById('btn-visual-ref').textContent = 'View Visual Reference';
 
     // Reset feedback
     feedbackRating = null;
