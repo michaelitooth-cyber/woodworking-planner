@@ -205,7 +205,9 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
       messages: [{ role: 'user', content: messageContent }],
     });
 
+    let fullPlanText = '';
     stream.on('text', (text) => {
+      fullPlanText += text;
       res.write(`data: ${JSON.stringify({ text })}\n\n`);
     });
 
@@ -216,7 +218,44 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
     });
 
     await stream.finalMessage();
-    res.write('data: {"done":true}\n\n');
+
+    // ── Extract cut list as structured JSON via a second quick API call ──
+    let cutListData = null;
+    try {
+      const extraction = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1500,
+        messages: [{
+          role: 'user',
+          content: `Extract the cut list from this woodworking plan as JSON. Return ONLY a valid JSON array — no other text, no markdown, no code fences.
+
+Each object must have exactly these fields:
+- "partName": string (descriptive name of the piece)
+- "quantity": integer (number of identical pieces)
+- "length": integer (millimetres; 0 if not stated)
+- "width": integer (millimetres; 0 if not stated)
+- "thickness": integer (millimetres; 0 if not stated)
+- "category": string (group heading this part belongs to, or empty string)
+
+Include only solid timber/sheet timber pieces. Omit hardware (screws, hinges), consumables, and finishing materials.
+
+Plan:
+${fullPlanText.slice(0, 6000)}`,
+        }],
+      });
+      const raw = extraction.content[0]?.text?.trim() ?? '';
+      const match = raw.match(/\[[\s\S]*\]/);
+      if (match) {
+        cutListData = JSON.parse(match[0]);
+        console.log(`[cutlist] Extracted ${cutListData.length} parts OK`);
+      } else {
+        console.warn('[cutlist] No JSON array found in extraction response. Raw:', raw.slice(0, 200));
+      }
+    } catch (e) {
+      console.warn('[cutlist] Extraction failed:', e.status ?? '', e.message);
+    }
+
+    res.write(`data: ${JSON.stringify({ done: true, ...(cutListData ? { cutListData } : {}) })}\n\n`);
     res.end();
 
   } catch (err) {
