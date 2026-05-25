@@ -865,8 +865,123 @@
       color: var(--text-muted);
     }
 
+    /* ── Visual Reference ── */
+    .visual-ref-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .btn-visual-ref {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      background: var(--surface-high);
+      color: var(--action);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .btn-visual-ref:hover:not(:disabled) {
+      background: var(--surface);
+      border-color: var(--timber-light);
+    }
+    .btn-visual-ref:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .visual-ref-section {
+      margin-top: 28px;
+      padding-top: 24px;
+      border-top: 2px solid var(--border-light);
+    }
+    .visual-ref-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-bottom: 16px;
+    }
+    .visual-ref-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .visual-ref-panel {
+      background: #FDFBF6;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .vr-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--timber-mid);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--surface);
+    }
+    .vr-body {
+      padding: 10px;
+      min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .vr-body img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 3px;
+    }
+    .vr-error {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    /* ── Print ── */
+    @media print {
+      /* Hide interactive chrome */
+      .results-footer,
+      .feedback-section,
+      .visual-ref-bar,
+      footer,
+      .wordmark,
+      .wordmark-rule,
+      .results-top,
+      .summary-card,
+      .generating-badge { display: none !important; }
+
+      /* Only show the results screen */
+      .screen { display: none !important; }
+      #screen-results { display: block !important; animation: none !important; }
+
+      body { background: #fff; }
+      .app { max-width: 100%; padding: 0 24px; }
+
+      .plan-output {
+        box-shadow: none;
+        border: none;
+        padding: 0;
+      }
+
+      /* Always print the visual reference if it exists */
+      .visual-ref-section { display: block !important; }
+      .visual-ref-grid { grid-template-columns: 1fr 1fr; }
+      .visual-ref-panel { break-inside: avoid; }
+    }
+
     /* ── Responsive ── */
     @media (max-width: 480px) {
+      .visual-ref-grid { grid-template-columns: 1fr; }
+
       .landing-form {
         padding: 20px 16px;
       }
@@ -1076,12 +1191,40 @@
 
     <div id="summary-card" class="summary-card"></div>
 
+    <div id="visual-ref-bar" class="visual-ref-bar" style="display:none">
+      <button id="btn-visual-ref" class="btn-visual-ref">View Visual Reference</button>
+    </div>
+
     <div id="plan-output" class="plan-output">
       <div class="plan-loading">
         <div class="loading-dots">
           <span></span><span></span><span></span>
         </div>
         <p>Putting your plan together&hellip;</p>
+      </div>
+    </div>
+
+    <div id="visual-ref-section" class="visual-ref-section" style="display:none">
+      <div class="visual-ref-heading">Visual Reference Sheet</div>
+      <div class="visual-ref-grid">
+        <div class="visual-ref-panel">
+          <div class="vr-label">Parts Overview</div>
+          <div class="vr-body" id="vr-parts-body">
+            <div class="sketch-loading-row">
+              <div class="loading-dots"><span></span><span></span><span></span></div>
+              <span>Generating&hellip;</span>
+            </div>
+          </div>
+        </div>
+        <div class="visual-ref-panel">
+          <div class="vr-label">Key Joinery Detail</div>
+          <div class="vr-body" id="vr-joinery-body">
+            <div class="sketch-loading-row">
+              <div class="loading-dots"><span></span><span></span><span></span></div>
+              <span>Generating&hellip;</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1142,6 +1285,8 @@
   };
 
   let variantData = []; // holds the three fetched variants for index lookup
+  let vrPlanText  = ''; // full accumulated plan text — used by visual reference
+  let vrCutList   = ''; // extracted Materials section — used by visual reference
 
   // ── Configure marked ──
   marked.setOptions({ breaks: true, gfm: true });
@@ -1419,6 +1564,8 @@
               // Final render of the post-sketch section, then populate sketch from variant image
               const after = accumulated.slice(splitPoint);
               try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
+              const cutListMatch = after.match(/##\s*Materials[\s\S]*?(?=\n##|$)/i);
+              vrCutList = cutListMatch ? cutListMatch[0] : '';
               showVariantSketch();
             } else {
               // Materials section never appeared — render the whole plan, skip sketch
@@ -1427,6 +1574,10 @@
                 try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
               }
             }
+            // Store plan text for visual reference, then reveal the trigger button
+            vrPlanText = accumulated;
+            document.getElementById('visual-ref-bar').style.display = 'flex';
+
             gtag('event', 'plan_generated', { project_description: state.project });
             footerEl.style.display = 'flex';
           }
@@ -1473,6 +1624,96 @@
     sketchBox.innerHTML = '';
     sketchBox.appendChild(img);
   }
+
+  // ── Visual Reference ──
+  function extractJoinery(text) {
+    const terms = [
+      'mortise and tenon', 'mortise & tenon', 'mortise-and-tenon',
+      'dovetail joint', 'dovetail',
+      'finger joint', 'box joint',
+      'dado joint', 'dado',
+      'rabbet joint', 'rabbet', 'rebate joint', 'rebate',
+      'half-lap joint', 'half lap joint', 'halving joint', 'half-lap', 'half lap',
+      'pocket hole joinery', 'pocket hole', 'pocket screw',
+      'biscuit joint', 'biscuit joinery',
+      'dowel joint', 'dowel',
+      'bridle joint',
+      'lap joint',
+      'butt joint',
+    ];
+    const lower = text.toLowerCase();
+    for (const term of terms) {
+      if (lower.includes(term)) return term;
+    }
+    return 'butt joint';
+  }
+
+  document.getElementById('btn-visual-ref').addEventListener('click', async () => {
+    const btn       = document.getElementById('btn-visual-ref');
+    const vrSection = document.getElementById('visual-ref-section');
+    const partsBody   = document.getElementById('vr-parts-body');
+    const joineryBody = document.getElementById('vr-joinery-body');
+
+    btn.disabled    = true;
+    btn.textContent = 'Generating…';
+
+    // Reset panels to loading state
+    const loadingHtml = `
+      <div class="sketch-loading-row">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <span>Generating&hellip;</span>
+      </div>`;
+    partsBody.innerHTML   = loadingHtml;
+    joineryBody.innerHTML = loadingHtml;
+
+    vrSection.style.display = 'block';
+    vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    const joinery = extractJoinery(vrPlanText);
+
+    try {
+      const resp = await fetch('/api/visual-reference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project:  state.project,
+          cutList:  vrCutList.slice(0, 1400),
+          joinery,
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (data.partsImage) {
+        const img = document.createElement('img');
+        img.src = data.partsImage;
+        img.alt = 'Parts overview';
+        partsBody.innerHTML = '';
+        partsBody.appendChild(img);
+      } else {
+        partsBody.innerHTML = '<p class="vr-error">Could not generate image.</p>';
+      }
+
+      if (data.joineryImage) {
+        const img = document.createElement('img');
+        img.src = data.joineryImage;
+        img.alt = 'Key joinery detail';
+        joineryBody.innerHTML = '';
+        joineryBody.appendChild(img);
+      } else {
+        joineryBody.innerHTML = '<p class="vr-error">Could not generate image.</p>';
+      }
+
+      btn.textContent = 'Visual Reference Generated ✓';
+      gtag('event', 'visual_reference_generated', { project_description: state.project });
+
+    } catch (err) {
+      partsBody.innerHTML   = '<p class="vr-error">Something went wrong. Please try again.</p>';
+      joineryBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
+      btn.disabled    = false;
+      btn.textContent = 'View Visual Reference';
+    }
+  });
 
   // ── Feedback ──
   let feedbackRating = null;
@@ -1556,7 +1797,15 @@
     document.getElementById('project-input').value = '';
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
-    document.getElementById('results-footer').style.display = 'none';
+    document.getElementById('results-footer').style.display  = 'none';
+
+    // Reset visual reference
+    vrPlanText = '';
+    vrCutList  = '';
+    document.getElementById('visual-ref-bar').style.display     = 'none';
+    document.getElementById('visual-ref-section').style.display = 'none';
+    document.getElementById('btn-visual-ref').disabled    = false;
+    document.getElementById('btn-visual-ref').textContent = 'View Visual Reference';
 
     // Reset feedback
     feedbackRating = null;

@@ -230,6 +230,35 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
 });
 
 
+app.post('/api/visual-reference', async (req, res) => {
+  const { project, cutList, joinery } = req.body;
+  if (!project || typeof project !== 'string') {
+    return res.status(400).json({ error: 'Missing project.' });
+  }
+
+  const cutListText = (typeof cutList  === 'string' ? cutList  : '').slice(0, 1400);
+  const joineryText = (typeof joinery  === 'string' ? joinery  : 'butt joint').slice(0, 100);
+
+  const partsPrompt = `Flat-lay technical parts sheet illustration for a ${project} woodworking project. All individual timber components laid out separately on a pure white background. Each part is labelled with its part name and quantity. Organised clearly like an IKEA instruction parts overview sheet. Warm natural timber tones showing wood grain, clean minimal layout, parts evenly spaced, top-down flat view. No dimensions, no measurements, no rulers, no dimension lines. Part name labels only.${cutListText ? ` Parts include: ${cutListText.slice(0, 400)}` : ''}`;
+
+  const joineryPrompt = `Close-up isometric technical illustration of a ${joineryText} woodworking joint, showing exactly how the two timber pieces connect and interlock. Clean workshop illustration style, warm timber grain texture, white background, professional woodworking manual illustration style. No text, no labels, no dimension lines, no annotations, no words of any kind.`;
+
+  try {
+    const [partsResult, joineryResult] = await Promise.allSettled([
+      generateImagenImage(partsPrompt),
+      generateImagenImage(joineryPrompt),
+    ]);
+
+    res.json({
+      partsImage:   partsResult.status   === 'fulfilled' ? partsResult.value   : null,
+      joineryImage: joineryResult.status === 'fulfilled' ? joineryResult.value : null,
+    });
+  } catch (err) {
+    console.warn('[visual-reference] Error:', err.message);
+    res.json({ partsImage: null, joineryImage: null });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`woodwork-studio.com Project Planner → http://localhost:${PORT}`);
 });
