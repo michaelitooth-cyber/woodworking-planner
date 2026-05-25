@@ -230,25 +230,6 @@ Numbered steps written in plain English. Tailor the complexity and techniques to
 });
 
 
-app.post('/api/visual-reference', async (req, res) => {
-  const { project, cutList } = req.body;
-  if (!project || typeof project !== 'string') {
-    return res.status(400).json({ error: 'Missing project.' });
-  }
-
-  const cutListText = (typeof cutList === 'string' ? cutList : '').slice(0, 1400);
-
-  const partsList = cutListText ? ` The cut list for this project is as follows — use these parts and their dimensions to determine the relative proportions of each piece in the illustration: ${cutListText.slice(0, 600)}` : '';
-  const partsPrompt = `Workshop flat-lay illustration of all the individual timber components for a ${project} woodworking project, arranged on a pure white background. Each timber piece is drawn as a three-dimensional plank or board showing natural wood grain and warm timber tones, with accurate relative proportions — longer pieces appear visibly longer than shorter ones, wider boards appear wider, thicker stock appears thicker. Pieces are clearly separated from each other with generous spacing. Arranged in logical groups by component type (e.g. legs together, rails together, panels together, shelves together). Clean, detailed, professional woodworking workshop illustration style, top-down perspective with a slight isometric tilt to show thickness. Each timber piece should be drawn with accurate relative proportions — longer pieces should appear visibly longer than shorter ones. Arrange pieces in logical groups by component type. No text, no labels, no dimensions anywhere in the image.${partsList}`;
-
-  try {
-    const image = await generateImagenImage(partsPrompt);
-    res.json({ partsImage: image ?? null });
-  } catch (err) {
-    console.warn('[visual-reference] Error:', err.message);
-    res.json({ partsImage: null });
-  }
-});
 
 app.listen(PORT, () => {
   console.log(`woodwork-studio.com Project Planner → http://localhost:${PORT}`);

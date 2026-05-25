@@ -905,8 +905,9 @@
     }
     .visual-ref-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 3fr 2fr; /* cut list gets more space */
       gap: 14px;
+      align-items: start;            /* panels grow to their own content height */
     }
     .visual-ref-panel {
       background: #FDFBF6;
@@ -926,16 +927,23 @@
     }
     .vr-body {
       padding: 10px;
-      min-height: 140px;
+      min-height: 120px;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+    /* Override for the cut-list panel — block layout, no centering */
+    .vr-body--list {
+      display: block;
+      min-height: 0;
+      padding: 6px 12px 10px;
     }
     .vr-body img {
       display: block;
       width: 100%;
       height: auto;
       border-radius: 3px;
+      object-fit: contain;
     }
     .vr-error {
       font-size: 13px;
@@ -950,9 +958,58 @@
       color: var(--text-muted);
       text-align: right;
     }
-    /* Used when joinery panel is hidden — parts image fills full width */
+    /* Used when joinery panel is hidden — parts list fills full width */
     .visual-ref-grid--single {
       grid-template-columns: 1fr;
+    }
+
+    /* ── Cut-list proportional layout ── */
+    .cutlist-layout { width: 100%; }
+    .cl-group-heading {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--timber-mid);
+      margin: 14px 0 5px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .cl-group-heading:first-child { margin-top: 4px; }
+    .cl-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+    }
+    .cl-name {
+      flex: 0 0 150px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--timber-dark);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cl-bar-track {
+      flex: 1 1 0;
+      height: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .cl-bar {
+      height: 100%;
+      border-radius: 3px;
+    }
+    .cl-dims {
+      flex: 0 0 118px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      white-space: nowrap;
+      text-align: right;
     }
 
     /* ── Print ── */
@@ -983,13 +1040,16 @@
 
       /* Always print the visual reference if it exists */
       .visual-ref-section { display: block !important; }
-      .visual-ref-grid { grid-template-columns: 1fr 1fr; }
+      .visual-ref-grid { grid-template-columns: 3fr 2fr; }
       .visual-ref-panel { break-inside: avoid; }
+      .cl-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
       .visual-ref-grid { grid-template-columns: 1fr; }
+      .cl-name { flex-basis: 110px; }
+      .cl-dims { flex-basis: 90px; font-size: 10px; }
 
       .landing-form {
         padding: 20px 16px;
@@ -1624,112 +1684,228 @@
 
   // ── Visual Reference ──
 
+  // Timber tones cycling through warm palette — one colour per part group
+  const CL_COLOURS = [
+    '#C8956C', // light pine
+    '#A07040', // rich oak
+    '#8B5E3C', // dark walnut
+    '#D4A574', // blonde maple
+    '#B07844', // jarrah
+    '#7A4F2A', // deep timber
+    '#E0B888', // pale ash
+  ];
+
   // Maps plan text to a static joinery library image.
   // Returns a URL path string, or null to hide the joinery panel.
   function matchJoineryImage(text) {
     const t = text.toLowerCase();
-    if (t.includes('mortise') || t.includes('tenon'))          return '/joinery-library/Mortise-tenon.svg';
-    if (t.includes('dovetail'))                                 return '/joinery-library/Dovetail-joint.png';
-    if (t.includes('bridle'))                                   return '/joinery-library/Bridle-Joint.svg';
-    if (t.includes('lap joint') || t.includes('halving'))       return '/joinery-library/Lap-joint.png';
-    if (t.includes('housing') || t.includes('dado'))            return '/joinery-library/housing-joint.png';
-    if (t.includes('mitre') || t.includes('miter'))             return '/joinery-library/Mitre-joint.png';
-    if (t.includes('dowel') || t.includes('domino'))            return '/joinery-library/Dowel-joint.png';
-    // Fastener-only approaches — no diagram to show
+    if (t.includes('mortise') || t.includes('tenon'))         return '/joinery-library/Mortise-tenon.svg';
+    if (t.includes('dovetail'))                               return '/joinery-library/Dovetail-joint.png';
+    if (t.includes('bridle'))                                 return '/joinery-library/Bridle-Joint.svg';
+    if (t.includes('lap joint') || t.includes('halving'))     return '/joinery-library/Lap-joint.png';
+    if (t.includes('housing') || t.includes('dado'))          return '/joinery-library/housing-joint.png';
+    if (t.includes('mitre') || t.includes('miter'))           return '/joinery-library/Mitre-joint.png';
+    if (t.includes('dowel') || t.includes('domino'))          return '/joinery-library/Dowel-joint.png';
     if (t.includes('screw') || t.includes('butt joint') || t.includes('pocket')) return null;
-    return null; // no recognised joinery
+    return null;
   }
 
-  async function generateVisualReference() {
+  // Parse the raw markdown cut list into structured groups.
+  // Returns [{ group: string, colour: string, parts: [{name, qty, dims:[l,w,t]}] }]
+  function parseCutList(rawText) {
+    const lines = rawText.split('\n');
+    const groups = [];
+    let colourIdx = 0;
+    let current = { group: '', colour: CL_COLOURS[0], parts: [] };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line === '---') continue;
+
+      // ── Group heading: **Bold**, *Bold*, or ### Heading ──────────
+      const boldM = line.match(/^\*{1,2}([^*:\n]{2,}?)\*{0,2}:?\s*$/);
+      const hashM = line.match(/^#{2,4}\s+(.+)$/);
+      const heading = boldM ? boldM[1].trim() : (hashM ? hashM[1].trim() : null);
+      if (heading && !/materials|cut list/i.test(heading)) {
+        if (current.parts.length) groups.push(current);
+        colourIdx = (colourIdx + 1) % CL_COLOURS.length;
+        current = { group: heading, colour: CL_COLOURS[colourIdx], parts: [] };
+        continue;
+      }
+
+      // ── Part row: must contain NNN × NNN × NNN (three dimensions) ──
+      const dimRx = /(\d{1,5}(?:\.\d+)?)\s*[×xX]\s*(\d{1,5}(?:\.\d+)?)\s*[×xX]\s*(\d{1,5}(?:\.\d+)?)/;
+      const dimM = line.match(dimRx);
+      if (!dimM) continue;
+      const dims = [parseFloat(dimM[1]), parseFloat(dimM[2]), parseFloat(dimM[3])];
+
+      // ── Quantity ─────────────────────────────────────────────────
+      let qty = 1;
+      // "Name × 2:" or "Name × 2 —"  (letter before ×, digit after, then separator)
+      const qA = line.match(/[a-zA-Z]\s*[×xX]\s*(\d+)\s*[:\-–(]/);
+      // "- 2 × Name" at start of bullet
+      const qB = line.match(/^[-•*]?\s*(\d+)\s*[×xX]\s+[a-zA-Z]/);
+      // "× 2" that isn't part of the three-dimensional block
+      const qD = line.replace(dimRx, '').match(/[a-zA-Z]\s*[×xX]\s*(\d+)/);
+      // "(2 off)" / "(2 pieces)" etc.
+      const qC = line.match(/\((\d+)\s*(?:off|pcs?|pieces?|nos?\.?)\)/i);
+
+      if      (qA) qty = parseInt(qA[1]);
+      else if (qB) qty = parseInt(qB[1]);
+      else if (qD) qty = parseInt(qD[1]);
+      else if (qC) qty = parseInt(qC[1]);
+
+      // ── Name ─────────────────────────────────────────────────────
+      let name = line;
+      name = name.replace(/^[-•*]\s*/, '').replace(/^\d+[.)]\s*/, ''); // strip bullet
+      name = name.replace(dimRx, '');                                   // remove dims
+      name = name.replace(/\d+(?:\.\d+)?\s*(?:mm|cm)\b/gi, '');        // remove mm
+      name = name.replace(/[×xX]\s*\d+/g, '').replace(/\d+\s*[×xX]/g, ''); // remove × N
+      name = name.replace(/\(?\d+\s*(?:off|pcs?|pieces?|nos?\.?)\)?/gi, ''); // "2 off"
+      name = name.replace(/[\s:\-–—,()]+$/, '').replace(/^[\s:\-–—,()]+/, '');
+      name = name.replace(/\s+/g, ' ').trim();
+      if (!name || name.length < 2) continue;
+
+      const displayName = qty > 1 ? `${name} × ${qty}` : name;
+      current.parts.push({ name: displayName, qty, dims });
+    }
+
+    if (current.parts.length) groups.push(current);
+    return groups;
+  }
+
+  // Build the DOM element for the proportional cut-list layout.
+  function renderCutList(groups) {
+    if (!groups.length) return null;
+
+    // Maximum first dimension (length) across all parts — used for bar widths
+    let maxLen = 0;
+    for (const g of groups)
+      for (const p of g.parts)
+        if (p.dims[0] > maxLen) maxLen = p.dims[0];
+    if (maxLen === 0) maxLen = 1;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cutlist-layout';
+
+    for (const g of groups) {
+      if (g.group) {
+        const hd = document.createElement('div');
+        hd.className = 'cl-group-heading';
+        hd.textContent = g.group;
+        wrap.appendChild(hd);
+      }
+      for (const p of g.parts) {
+        const row = document.createElement('div');
+        row.className = 'cl-row';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'cl-name';
+        nameEl.title     = p.name;       // tooltip for truncated names
+        nameEl.textContent = p.name;
+
+        const track = document.createElement('div');
+        track.className = 'cl-bar-track';
+        const bar = document.createElement('div');
+        bar.className = 'cl-bar';
+        bar.style.width      = `${Math.max(3, Math.round((p.dims[0] / maxLen) * 100))}%`;
+        bar.style.background = g.colour;
+        track.appendChild(bar);
+
+        const dimsEl = document.createElement('div');
+        dimsEl.className = 'cl-dims';
+        dimsEl.textContent = `${p.dims[0]} × ${p.dims[1]} × ${p.dims[2]}`;
+
+        row.appendChild(nameEl);
+        row.appendChild(track);
+        row.appendChild(dimsEl);
+        wrap.appendChild(row);
+      }
+    }
+    return wrap;
+  }
+
+  // Build and inject the Visual Reference Sheet — fully synchronous, no API calls.
+  function generateVisualReference() {
     const btn = document.getElementById('btn-visual-ref');
     if (!btn) return;
-    btn.disabled    = true;
-    btn.textContent = 'Generating…';
+    btn.disabled = true;
 
-    // Resolve joinery from the static library — synchronous, no API needed
     const joineryImagePath = matchJoineryImage(vrPlanText);
-    console.log('[VR] joinery match →', joineryImagePath ?? '(no match — panel hidden)');
+    const hasJoinery       = Boolean(joineryImagePath);
 
-    const hasJoinery = Boolean(joineryImagePath);
+    const groups  = vrCutList ? parseCutList(vrCutList) : [];
+    const partsEl = renderCutList(groups);
 
-    // Remove any previously generated sheet (e.g. if button clicked twice)
+    // Remove any previously generated sheet
     const vrBar = btn.closest('.visual-ref-bar');
     const existing = vrBar?.nextElementSibling;
     if (existing?.classList.contains('visual-ref-section')) existing.remove();
 
-    // Build the Visual Reference Sheet inline and insert it immediately
-    // after the button, so it sits right below the Materials/Cut List section
+    // ── Build sheet ───────────────────────────────────────────────
     const vrSection = document.createElement('div');
     vrSection.className = 'visual-ref-section';
-    vrSection.innerHTML = `
-      <div class="visual-ref-heading">Visual Reference Sheet</div>
-      <div class="visual-ref-grid${hasJoinery ? '' : ' visual-ref-grid--single'}">
-        <div class="visual-ref-panel">
-          <div class="vr-label">Parts Overview</div>
-          <div class="vr-body" id="vr-parts-body">
-            <div class="sketch-loading-row">
-              <div class="loading-dots"><span></span><span></span><span></span></div>
-              <span>Generating&hellip;</span>
-            </div>
-          </div>
-        </div>
-        ${hasJoinery ? `
-        <div class="visual-ref-panel">
-          <div class="vr-label">Key Joinery Detail</div>
-          <div class="vr-body" id="vr-joinery-body"></div>
-        </div>` : ''}
-      </div>
-      <p class="vr-attribution">Joint diagrams: Wikimedia Commons (CC BY-SA)</p>`;
 
+    const hdEl = document.createElement('div');
+    hdEl.className   = 'visual-ref-heading';
+    hdEl.textContent = 'Visual Reference Sheet';
+    vrSection.appendChild(hdEl);
+
+    const grid = document.createElement('div');
+    grid.className = 'visual-ref-grid' + (hasJoinery ? '' : ' visual-ref-grid--single');
+
+    // Parts panel
+    const partsPanel = document.createElement('div');
+    partsPanel.className = 'visual-ref-panel';
+    const partsLbl = document.createElement('div');
+    partsLbl.className   = 'vr-label';
+    partsLbl.textContent = 'Parts Overview';
+    partsPanel.appendChild(partsLbl);
+    const partsBody = document.createElement('div');
+    partsBody.className = 'vr-body vr-body--list';
+    if (partsEl) {
+      partsBody.appendChild(partsEl);
+    } else {
+      partsBody.innerHTML = '<p class="vr-error">No cut list data found.</p>';
+    }
+    partsPanel.appendChild(partsBody);
+    grid.appendChild(partsPanel);
+
+    // Joinery panel (only when a matching diagram exists)
+    if (hasJoinery) {
+      const joineryPanel = document.createElement('div');
+      joineryPanel.className = 'visual-ref-panel';
+      const joineryLbl = document.createElement('div');
+      joineryLbl.className   = 'vr-label';
+      joineryLbl.textContent = 'Key Joinery Detail';
+      joineryPanel.appendChild(joineryLbl);
+      const joineryBody = document.createElement('div');
+      joineryBody.className = 'vr-body';
+      const img = document.createElement('img');
+      img.src = joineryImagePath;
+      img.alt = 'Key joinery detail';
+      joineryBody.appendChild(img);
+      joineryPanel.appendChild(joineryBody);
+      grid.appendChild(joineryPanel);
+    }
+
+    vrSection.appendChild(grid);
+
+    const attr = document.createElement('p');
+    attr.className   = 'vr-attribution';
+    attr.textContent = 'Joint diagrams: Wikimedia Commons (CC BY-SA)';
+    vrSection.appendChild(attr);
+
+    // ── Insert inline after the button ────────────────────────────
     if (vrBar) {
       vrBar.insertAdjacentElement('afterend', vrSection);
     } else {
-      // Fallback: append inside plan-output
       document.getElementById('plan-output')?.appendChild(vrSection);
     }
     vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // Populate joinery panel immediately from static file — no wait needed
-    if (hasJoinery) {
-      const img = document.createElement('img');
-      img.src = joineryImagePath;
-      img.alt = 'Key joinery detail';
-      document.getElementById('vr-joinery-body').appendChild(img);
-    }
-
-    // Fetch parts image (Gemini — async)
-    try {
-      const resp = await fetch('/api/visual-reference', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project: state.project,
-          cutList: vrCutList.slice(0, 1400),
-        }),
-      });
-
-      const data  = await resp.json();
-      const partsBody = document.getElementById('vr-parts-body');
-
-      if (data.partsImage) {
-        const img = document.createElement('img');
-        img.src = data.partsImage;
-        img.alt = 'Parts overview';
-        partsBody.innerHTML = '';
-        partsBody.appendChild(img);
-      } else {
-        partsBody.innerHTML = '<p class="vr-error">Could not generate image.</p>';
-      }
-
-      btn.textContent = 'Visual Reference Generated ✓';
-      gtag('event', 'visual_reference_generated', { project_description: state.project });
-
-    } catch (err) {
-      const partsBody = document.getElementById('vr-parts-body');
-      if (partsBody) partsBody.innerHTML = '<p class="vr-error">Something went wrong. Please try again.</p>';
-      btn.disabled    = false;
-      btn.textContent = 'View Visual Reference';
-    }
+    btn.textContent = 'Visual Reference Generated ✓';
+    gtag('event', 'visual_reference_generated', { project_description: state.project });
   }
 
   // ── Feedback ──
