@@ -270,6 +270,60 @@ ${fullPlanText.slice(0, 6000)}`,
 
 
 
+// ── Generate 3D Modelling + Visualisation prompts ──
+app.post('/api/generate-prompts', async (req, res) => {
+  const { planText = '', cutListData = null, timber = '', project = '' } = req.body;
+
+  const cutListSummary = cutListData
+    ? cutListData.slice(0, 20).map(p => `${p.partName}: ${p.length}×${p.width}×${p.thickness}mm (qty ${p.quantity})`).join('\n')
+    : '';
+
+  const userMessage = `
+Project: ${project}
+Timber: ${timber || 'as specified in plan'}
+
+Plan excerpt (first 2500 chars):
+${planText.slice(0, 2500)}
+
+${cutListSummary ? `Key components:\n${cutListSummary}` : ''}
+
+Generate exactly two prompts and return them as a JSON object with keys "promptA" and "promptB".
+
+Prompt A — 3D Modelling Prompt for SketchUp, Fusion 360, or Blender:
+- Start with the project name and style (e.g. "Simple rustic garden bench")
+- State overall dimensions (length × width × height in mm)
+- List each key component with dimensions (mm) and quantity
+- Specify the joinery method used
+- Note the timber species
+- Format as structured plain text so it can be pasted directly into a 3D tool prompt
+
+Prompt B — Visualisation Prompt for Midjourney or DALL-E:
+- Describe the finished piece visually in rich detail
+- Cover: style, timber species and grain, surface finish, setting/environment, lighting, mood
+- Write as a single flowing descriptive paragraph suitable for an image generation tool
+- Aim for a photo-realistic rendered result
+
+Return only the JSON object, no markdown fences.`.trim();
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1200,
+      system: 'You are a specialist in woodworking project documentation. Return only valid JSON — no markdown, no commentary.',
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const raw = message.content[0]?.text ?? '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in response');
+    const parsed = JSON.parse(jsonMatch[0]);
+    res.json({ promptA: parsed.promptA ?? '', promptB: parsed.promptB ?? '' });
+  } catch (err) {
+    console.error('[generate-prompts] error:', err.message);
+    res.status(500).json({ error: 'Failed to generate prompts' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`woodwork-studio.com Project Planner → http://localhost:${PORT}`);
 });

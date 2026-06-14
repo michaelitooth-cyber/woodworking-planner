@@ -127,6 +127,118 @@
     }
 
     /* ── Landing screen ── */
+
+    /* Welcome card */
+    .welcome-card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 18px 22px;
+      margin-bottom: 24px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+    .welcome-card a {
+      color: var(--timber-mid);
+      text-underline-offset: 2px;
+    }
+    .welcome-card a:hover { color: var(--timber-dark); }
+
+    /* Input helper text */
+    .input-helper {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+
+    /* ── Prompt modal ── */
+    .prompt-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(35, 15, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 24px 16px;
+      animation: fadeUp 0.2s ease both;
+    }
+    .prompt-modal-card {
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(35, 15, 0, 0.2);
+      padding: 24px;
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .prompt-modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .prompt-modal-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--timber-dark);
+    }
+    .prompt-modal-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .prompt-modal-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .prompt-modal-close:hover { background: var(--surface); color: var(--text); }
+    .prompt-textarea {
+      width: 100%;
+      min-height: 220px;
+      max-height: 55vh;
+      overflow-y: auto;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      resize: vertical;
+    }
+    .btn-copy-prompt {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: var(--action);
+      color: var(--action-text);
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-copy-prompt:hover { background: var(--action-hover); }
+    .btn-copy-prompt.copied { background: var(--green); }
+
     .landing-hero {
       margin-top: 40px;
       margin-bottom: 36px;
@@ -1235,6 +1347,10 @@
       <p>Tell us what you have in mind — even a rough idea is enough. We'll ask a few quick questions and put together a personalised project plan for you.</p>
     </div>
 
+    <div class="welcome-card">
+      <p>Hey, welcome! I'm a passionate woodworker who wants to help people plan their projects and get more people into woodworking. I'm constantly working to make this tool better — if you have a moment to <a href="#" id="welcome-feedback-link">leave feedback</a> or <a href="https://ko-fi.com/X2M4203MOI" target="_blank" rel="noopener">buy me a coffee</a> to help keep the lights on, I'd really appreciate it. Now, let's build something great!</p>
+    </div>
+
     <div class="landing-form">
       <label for="project-input">Describe your project</label>
       <textarea
@@ -1243,6 +1359,7 @@
         placeholder="e.g. A timber garden bench for the back patio, a small bookshelf for the hallway, a wooden toy box for the grandkids…"
         maxlength="600"
       ></textarea>
+      <p class="input-helper">If you have a specific size in mind, include it in your description — for example "a bookcase 1800mm tall and 900mm wide" — and we'll plan to your measurements.</p>
       <button id="btn-start" class="btn-primary">Get started &rarr;</button>
     </div>
   </section>
@@ -1461,11 +1578,13 @@
           <span>Visual Reference Sheet</span>
         </button>
 
-        <button id="btn-3d-prompt" class="btn-action btn-action-soon" disabled>
+        <button id="btn-3d-prompt" class="btn-action loading" disabled>
+          <span class="btn-action-spinner"></span>
           <span>3D Modelling Prompt</span>
         </button>
 
-        <button id="btn-vis-prompt" class="btn-action btn-action-soon" disabled>
+        <button id="btn-vis-prompt" class="btn-action loading" disabled>
+          <span class="btn-action-spinner"></span>
           <span>Visualisation Prompt</span>
         </button>
 
@@ -1489,6 +1608,23 @@
 
 </div><!-- /.app -->
 
+<!-- ── Prompt modal ── -->
+<div id="prompt-modal" class="prompt-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="prompt-modal-card">
+    <div class="prompt-modal-header">
+      <div>
+        <div class="prompt-modal-title" id="prompt-modal-title"></div>
+        <div class="prompt-modal-subtitle" id="prompt-modal-subtitle"></div>
+      </div>
+      <button class="prompt-modal-close" id="prompt-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <textarea class="prompt-textarea" id="prompt-textarea" readonly></textarea>
+    <div>
+      <button class="btn-copy-prompt" id="btn-copy-prompt">Copy to clipboard</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   woodwork-studio.com &mdash; For Australian hobby woodworkers
 </footer>
@@ -1507,6 +1643,8 @@
   let vrPlanText    = ''; // full accumulated plan text — used by visual reference
   let vrCutList     = ''; // extracted Materials section markdown — fallback only
   let vrCutListData = null; // structured cut list JSON from server — preferred source
+  let aiPromptA     = null; // generated 3D modelling prompt
+  let aiPromptB     = null; // generated visualisation prompt
 
   // ── Configure marked ──
   marked.setOptions({ breaks: true, gfm: true });
@@ -1682,9 +1820,9 @@
 
     const planEl  = document.getElementById('plan-output');
     const panelEl = document.getElementById('action-panel');
-    // Show panel immediately with spinners on loading buttons
+    // Show panel immediately; all five content buttons start in loading state
     panelEl.style.display = '';
-    ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+    ['btn-print', 'btn-visual-ref-panel', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
       const btn = document.getElementById(id);
       btn.disabled = true;
       btn.classList.add('loading');
@@ -1828,12 +1966,13 @@
             }
 
             gtag('event', 'plan_generated', { project_description: state.project });
-            // Activate panel buttons now that the plan is ready
+            // Activate plan-complete buttons; 3D/vis buttons stay loading until prompts arrive
             ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
               const btn = document.getElementById(id);
               btn.disabled = false;
               btn.classList.remove('loading');
             });
+            generateAIPrompts();
           }
         }
       }
@@ -2146,6 +2285,94 @@
     gtag('event', 'visual_reference_generated', { project_description: state.project });
   }
 
+  // ── AI Prompt generation ──
+  async function generateAIPrompts() {
+    try {
+      const resp = await fetch('/api/generate-prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planText:     vrPlanText,
+          cutListData:  vrCutListData,
+          timber:       state.timber,
+          project:      state.project,
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+
+      if (data.promptA) {
+        aiPromptA = data.promptA;
+        const btn = document.getElementById('btn-3d-prompt');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+      if (data.promptB) {
+        aiPromptB = data.promptB;
+        const btn = document.getElementById('btn-vis-prompt');
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    } catch (err) {
+      console.error('[generateAIPrompts] failed:', err);
+      // Leave buttons disabled — user can try regenerating
+    }
+  }
+
+  // ── Prompt modal ──
+  function showPromptModal(title, subtitle, text) {
+    document.getElementById('prompt-modal-title').textContent    = title;
+    document.getElementById('prompt-modal-subtitle').textContent = subtitle;
+    document.getElementById('prompt-textarea').value             = text;
+    const copyBtn = document.getElementById('btn-copy-prompt');
+    copyBtn.textContent = 'Copy to clipboard';
+    copyBtn.classList.remove('copied');
+    document.getElementById('prompt-modal').style.display = 'flex';
+  }
+
+  function closePromptModal() {
+    document.getElementById('prompt-modal').style.display = 'none';
+  }
+
+  document.getElementById('prompt-modal-close').addEventListener('click', closePromptModal);
+  document.getElementById('prompt-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('prompt-modal')) closePromptModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closePromptModal();
+  });
+
+  document.getElementById('btn-copy-prompt').addEventListener('click', async () => {
+    const text = document.getElementById('prompt-textarea').value;
+    const btn  = document.getElementById('btn-copy-prompt');
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      document.getElementById('prompt-textarea').select();
+      document.execCommand('copy');
+    }
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy to clipboard'; btn.classList.remove('copied'); }, 2500);
+  });
+
+  document.getElementById('btn-3d-prompt').addEventListener('click', () => {
+    if (aiPromptA) showPromptModal('3D Modelling Prompt', 'For SketchUp, Fusion 360, or Blender', aiPromptA);
+  });
+  document.getElementById('btn-vis-prompt').addEventListener('click', () => {
+    if (aiPromptB) showPromptModal('Visualisation Prompt', 'For Midjourney or DALL·E', aiPromptB);
+  });
+
+  // ── Welcome card feedback link ──
+  document.getElementById('welcome-feedback-link').addEventListener('click', e => {
+    e.preventDefault();
+    // If the user has already generated a plan, open the feedback section
+    if (document.getElementById('screen-results').classList.contains('visible')) {
+      document.getElementById('btn-feedback-toggle').click();
+    }
+    // On the landing screen there's nothing to do yet — the link is informational
+  });
+
   // ── Feedback ──
   let feedbackRating = null;
 
@@ -2234,19 +2461,23 @@
     document.getElementById('project-input').value = '';
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
-    // Hide panel and reset loading buttons back to spinner state
+    // Hide panel and reset all content buttons back to loading spinner state
     const panelEl = document.getElementById('action-panel');
     panelEl.style.display = 'none';
-    ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+    ['btn-print', 'btn-visual-ref-panel', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
       const btn = document.getElementById(id);
       btn.disabled = true;
       btn.classList.add('loading');
     });
+    document.getElementById('btn-3d-prompt').querySelector('span:last-child').textContent = '3D Modelling Prompt';
+    document.getElementById('btn-vis-prompt').querySelector('span:last-child').textContent = 'Visualisation Prompt';
 
-    // Reset visual reference (button + sheet live inside plan-output, cleared above)
+    // Reset visual reference and AI prompts
     vrPlanText    = '';
     vrCutList     = '';
     vrCutListData = null;
+    aiPromptA     = null;
+    aiPromptB     = null;
 
     // Reset feedback
     feedbackRating = null;
