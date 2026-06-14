@@ -68,6 +68,10 @@
       padding: 0 16px 60px;
       flex: 1;
     }
+    /* Widen app container when results screen is active to accommodate sidebar */
+    body:has(#screen-results.visible) .app {
+      max-width: 920px;
+    }
 
     /* ── Screens ── */
     .screen {
@@ -617,14 +621,95 @@
       padding: 8px 0;
     }
 
-    /* Results footer */
-    .results-footer {
-      margin-top: 28px;
+    /* Results layout — two-column: plan content + sticky action panel */
+    .results-layout {
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      align-items: center;
+      align-items: flex-start;
+      gap: 24px;
+      margin-top: 24px;
     }
+    .results-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    /* Sticky action panel sidebar */
+    .action-panel {
+      width: 208px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 24px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 16px 14px;
+    }
+    .action-panel-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .btn-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      text-align: left;
+      padding: 9px 12px;
+      margin-bottom: 6px;
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--timber-dark);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+    .btn-action:last-child { margin-bottom: 0; }
+    .btn-action:hover:not(:disabled) {
+      background: var(--surface-high);
+      border-color: var(--timber-light);
+    }
+    .btn-action:disabled {
+      color: var(--text-muted);
+      border-color: var(--border-light);
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    .btn-action.loading { cursor: default; }
+    .btn-action-soon { font-style: italic; }
+    .btn-action-new {
+      margin-top: 10px;
+      border-color: var(--timber-mid);
+      color: var(--timber-mid);
+    }
+    .btn-action-new:hover:not(:disabled) {
+      background: var(--timber-mid);
+      color: var(--action-text);
+    }
+    /* Inline spinner shown while button content is generating */
+    .btn-action-spinner {
+      display: none;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border-light);
+      border-top-color: var(--timber-light);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .btn-action.loading .btn-action-spinner {
+      display: block;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Ko-fi widget normalisation — matches btn-secondary sizing */
     #kofi-btn-wrap {
@@ -658,6 +743,21 @@
       height: 18px !important;
       width: auto !important;
       margin: 0 !important;
+    }
+    /* Ko-fi inside action panel — full-width, panel-sized */
+    #action-panel #kofi-btn-wrap {
+      display: block;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    #action-panel #kofi-btn-wrap > div { display: block !important; }
+    #action-panel #kofi-btn-wrap .kofi-button {
+      width: 100% !important;
+      padding: 9px 12px !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      justify-content: flex-start !important;
+      border-radius: var(--radius-sm) !important;
     }
 
     /* ── Feedback ── */
@@ -1015,7 +1115,7 @@
     /* ── Print ── */
     @media print {
       /* Hide interactive chrome */
-      .results-footer,
+      .action-panel,
       .feedback-section,
       .visual-ref-bar,
       footer,
@@ -1046,26 +1146,72 @@
     }
 
     /* ── Responsive ── */
+
+    /* Below 860px the sidebar can't fit beside the plan — switch to mobile bottom bar */
+    @media (max-width: 860px) {
+      body:has(#screen-results.visible) .app { max-width: 100%; }
+
+      .results-layout { flex-direction: column; gap: 0; margin-top: 16px; }
+      .results-main { width: 100%; padding-bottom: 72px; }
+
+      .action-panel {
+        display: flex;
+        position: fixed !important;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: auto !important;
+        width: 100% !important;
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -2px 12px rgba(55, 25, 0, 0.12);
+        padding: 10px 12px;
+        flex-direction: row !important;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        z-index: 100;
+        scrollbar-width: none;
+      }
+      .action-panel::-webkit-scrollbar { display: none; }
+      .action-panel-header { display: none; }
+
+      .btn-action {
+        flex-shrink: 0;
+        width: auto !important;
+        white-space: nowrap;
+        margin-bottom: 0;
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+      .btn-action-new { margin-top: 0; }
+
+      #action-panel #kofi-btn-wrap {
+        display: inline-flex !important;
+        width: auto !important;
+        flex-shrink: 0;
+        margin-bottom: 0;
+      }
+      #action-panel #kofi-btn-wrap > div { display: inline-flex !important; }
+      #action-panel #kofi-btn-wrap .kofi-button {
+        width: auto !important;
+        white-space: nowrap !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+      }
+    }
+
     @media (max-width: 480px) {
       .visual-ref-grid { grid-template-columns: 1fr; }
       .cl-name { flex-basis: 110px; }
       .cl-dims { flex-basis: 90px; font-size: 10px; }
 
-      .landing-form {
-        padding: 20px 16px;
-      }
-      .plan-output {
-        padding: 20px 16px;
-      }
-      .summary-card {
-        padding: 14px 16px;
-      }
-      .timber-input-row {
-        flex-direction: column;
-      }
-      .timber-input-row .btn-use {
-        width: 100%;
-      }
+      .landing-form { padding: 20px 16px; }
+      .plan-output { padding: 20px 16px; }
+      .summary-card { padding: 14px 16px; }
+      .timber-input-row { flex-direction: column; }
+      .timber-input-row .btn-use { width: 100%; }
     }
   </style>
 </head>
@@ -1260,53 +1406,85 @@
 
     <div id="summary-card" class="summary-card"></div>
 
-    <div id="plan-output" class="plan-output">
-      <div class="plan-loading">
-        <div class="loading-dots">
-          <span></span><span></span><span></span>
-        </div>
-        <p>Putting your plan together&hellip;</p>
-      </div>
-    </div>
+    <div class="results-layout">
 
-    <div id="results-footer" class="results-footer" style="display:none">
-      <button id="btn-new-project" class="btn-secondary">Plan another project</button>
-      <button id="btn-print" class="btn-secondary" onclick="window.print()">Print / Save as PDF</button>
-      <button id="btn-feedback-toggle" class="btn-secondary">Leave feedback</button>
-      <div id="kofi-btn-wrap">
-        <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
-        <script type='text/javascript'>kofiwidget2.init('Support this tool', '#8B5E3C', 'X2M4203MOI');kofiwidget2.draw();</script>
-      </div>
-    </div>
-
-    <div id="feedback-section" class="feedback-section" style="display:none">
-      <div id="feedback-form-wrap" class="feedback-form open">
-        <p class="feedback-form-heading">How did we do?</p>
-
-        <div class="rating-row">
-          <button class="rating-btn" data-rating="1" aria-label="1 star">1</button>
-          <button class="rating-btn" data-rating="2" aria-label="2 stars">2</button>
-          <button class="rating-btn" data-rating="3" aria-label="3 stars">3</button>
-          <button class="rating-btn" data-rating="4" aria-label="4 stars">4</button>
-          <button class="rating-btn" data-rating="5" aria-label="5 stars">5</button>
-        </div>
-        <div class="rating-legend">
-          <span>1 = needs work</span>
-          <span>5 = love it!</span>
+      <div class="results-main">
+        <div id="plan-output" class="plan-output">
+          <div class="plan-loading">
+            <div class="loading-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <p>Putting your plan together&hellip;</p>
+          </div>
         </div>
 
-        <textarea
-          id="feedback-comments"
-          class="feedback-comments"
-          placeholder="What could we do better, or what did you love?"
-          maxlength="1000"
-        ></textarea>
+        <div id="feedback-section" class="feedback-section" style="display:none">
+          <div id="feedback-form-wrap" class="feedback-form open">
+            <p class="feedback-form-heading">How did we do?</p>
 
-        <button id="btn-submit-feedback" class="btn-feedback-submit">Submit Feedback</button>
-      </div>
+            <div class="rating-row">
+              <button class="rating-btn" data-rating="1" aria-label="1 star">1</button>
+              <button class="rating-btn" data-rating="2" aria-label="2 stars">2</button>
+              <button class="rating-btn" data-rating="3" aria-label="3 stars">3</button>
+              <button class="rating-btn" data-rating="4" aria-label="4 stars">4</button>
+              <button class="rating-btn" data-rating="5" aria-label="5 stars">5</button>
+            </div>
+            <div class="rating-legend">
+              <span>1 = needs work</span>
+              <span>5 = love it!</span>
+            </div>
 
-      <div id="feedback-message" style="display:none"></div>
-    </div>
+            <textarea
+              id="feedback-comments"
+              class="feedback-comments"
+              placeholder="What could we do better, or what did you love?"
+              maxlength="1000"
+            ></textarea>
+
+            <button id="btn-submit-feedback" class="btn-feedback-submit">Submit Feedback</button>
+          </div>
+
+          <div id="feedback-message" style="display:none"></div>
+        </div>
+      </div><!-- /.results-main -->
+
+      <aside id="action-panel" class="action-panel" style="display:none">
+        <div class="action-panel-header">Plan Actions</div>
+
+        <button id="btn-print" class="btn-action loading" disabled>
+          <span class="btn-action-spinner"></span>
+          <span>Print / Save as PDF</span>
+        </button>
+
+        <button id="btn-visual-ref-panel" class="btn-action loading" disabled>
+          <span class="btn-action-spinner"></span>
+          <span>Visual Reference Sheet</span>
+        </button>
+
+        <button id="btn-3d-prompt" class="btn-action btn-action-soon" disabled>
+          <span>3D Modelling Prompt</span>
+        </button>
+
+        <button id="btn-vis-prompt" class="btn-action btn-action-soon" disabled>
+          <span>Visualisation Prompt</span>
+        </button>
+
+        <button id="btn-feedback-toggle" class="btn-action loading" disabled>
+          <span class="btn-action-spinner"></span>
+          <span>Leave Feedback</span>
+        </button>
+
+        <div id="kofi-btn-wrap">
+          <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+          <script type='text/javascript'>kofiwidget2.init('Support this tool', '#8B5E3C', 'X2M4203MOI');kofiwidget2.draw();</script>
+        </div>
+
+        <button id="btn-new-project" class="btn-action btn-action-new">
+          <span>Plan another project</span>
+        </button>
+      </aside><!-- /#action-panel -->
+
+    </div><!-- /.results-layout -->
   </section>
 
 </div><!-- /.app -->
@@ -1502,9 +1680,15 @@
     buildSummaryCard();
     showScreen('screen-results');
 
-    const planEl = document.getElementById('plan-output');
-    const footerEl = document.getElementById('results-footer');
-    footerEl.style.display = 'none';
+    const planEl  = document.getElementById('plan-output');
+    const panelEl = document.getElementById('action-panel');
+    // Show panel immediately with spinners on loading buttons
+    panelEl.style.display = '';
+    ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.disabled = true;
+      btn.classList.add('loading');
+    });
 
     planEl.innerHTML = `
       <div class="plan-loading">
@@ -1644,7 +1828,12 @@
             }
 
             gtag('event', 'plan_generated', { project_description: state.project });
-            footerEl.style.display = 'flex';
+            // Activate panel buttons now that the plan is ready
+            ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+              const btn = document.getElementById(id);
+              btn.disabled = false;
+              btn.classList.remove('loading');
+            });
           }
         }
       }
@@ -1862,9 +2051,11 @@
 
   // Build and inject the Visual Reference Sheet — fully synchronous, no API calls.
   function generateVisualReference() {
-    const btn = document.getElementById('btn-visual-ref');
-    if (!btn) return;
-    btn.disabled = true;
+    // Either the inline plan button or the sidebar button may trigger this
+    const btn        = document.getElementById('btn-visual-ref');
+    const sidebarBtn = document.getElementById('btn-visual-ref-panel');
+    if (btn) btn.disabled = true;
+    if (sidebarBtn) { sidebarBtn.disabled = true; sidebarBtn.querySelector('span:last-child').textContent = 'Generating…'; }
 
     const joineryImagePath = matchJoineryImage(vrPlanText);
     const hasJoinery       = Boolean(joineryImagePath);
@@ -1884,7 +2075,7 @@
     console.log('[VR] renderCutList result:', partsEl);
 
     // Remove any previously generated sheet
-    const vrBar = btn.closest('.visual-ref-bar');
+    const vrBar = btn?.closest('.visual-ref-bar') ?? null;
     const existing = vrBar?.nextElementSibling;
     if (existing?.classList.contains('visual-ref-section')) existing.remove();
 
@@ -1950,7 +2141,8 @@
     }
     vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    btn.textContent = 'Visual Reference Generated ✓';
+    if (btn) btn.textContent = 'Visual Reference Generated ✓';
+    if (sidebarBtn) sidebarBtn.querySelector('span:last-child').textContent = 'Visual Reference Sheet ✓';
     gtag('event', 'visual_reference_generated', { project_description: state.project });
   }
 
@@ -1968,8 +2160,14 @@
     }
   });
 
+  // Print button
+  document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+  // Visual Reference Sheet (sidebar button mirrors the inline plan button)
+  document.getElementById('btn-visual-ref-panel').addEventListener('click', generateVisualReference);
+
   // Ko-fi click tracking — event delegation so it works after widget renders
-  document.getElementById('results-footer').addEventListener('click', (e) => {
+  document.getElementById('action-panel').addEventListener('click', (e) => {
     if (e.target.closest('#kofi-btn-wrap a')) {
       gtag('event', 'kofi_clicked');
     }
@@ -2036,7 +2234,14 @@
     document.getElementById('project-input').value = '';
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
-    document.getElementById('results-footer').style.display  = 'none';
+    // Hide panel and reset loading buttons back to spinner state
+    const panelEl = document.getElementById('action-panel');
+    panelEl.style.display = 'none';
+    ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+      const btn = document.getElementById(id);
+      btn.disabled = true;
+      btn.classList.add('loading');
+    });
 
     // Reset visual reference (button + sheet live inside plan-output, cleared above)
     vrPlanText    = '';
