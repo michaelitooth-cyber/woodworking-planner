@@ -22,21 +22,24 @@ if (!process.env.GEMINI_API_KEY) {
 const client = new Anthropic();
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
-const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
+// Imagen 4 (standard/ultra/fast) was shut down by Google on 2026-08-17;
+// gemini-3.1-flash-image is the recommended native-image-generation replacement.
+const IMAGE_MODEL = 'gemini-3.1-flash-image';
 
 async function generateImagenImage(prompt) {
-  const response = await genAI.models.generateImages({
-    model: IMAGEN_MODEL,
-    prompt,
+  const response = await genAI.models.generateContent({
+    model: IMAGE_MODEL,
+    contents: prompt,
     config: {
-      numberOfImages: 1,
-      aspectRatio: '1:1',
-      outputMimeType: 'image/jpeg',
+      responseModalities: ['IMAGE'],
+      imageConfig: { aspectRatio: '1:1' },
     },
   });
-  const imageBytes = response.generatedImages?.[0]?.image?.imageBytes;
-  if (!imageBytes) return null;
-  return `data:image/jpeg;base64,${imageBytes}`;
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find(p => p.inlineData?.data);
+  if (!imagePart) return null;
+  const { data, mimeType } = imagePart.inlineData;
+  return `data:${mimeType || 'image/jpeg'};base64,${data}`;
 }
 
 const SYSTEM_PROMPT = `You are an experienced Australian woodworker and friendly mentor. You help hobby woodworkers — many of them older Australians — plan their projects with practical, encouraging advice.
