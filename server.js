@@ -103,17 +103,27 @@ Return exactly this structure:
       description: String(v.description ?? '').slice(0, 500),
     }));
 
-    // Generate one lifestyle image per variant in parallel — fail silently per image
+    // Generate one lifestyle image per variant in parallel — a per-image failure
+    // doesn't fail the whole request, but we log it so it's visible in Vercel logs
+    // instead of silently showing up as a card with no image.
     const imageResults = await Promise.allSettled(
       clean.map(v => generateImagenImage(
         `Isometric illustration of a ${project} in ${v.name} style, woodworking project, warm timber tones, clean workshop setting, no text, no measurements, no dimension lines, no labels, no numbers, soft natural lighting, white background`
       ))
     );
 
-    const variantsWithImages = clean.map((v, i) => ({
-      ...v,
-      image: imageResults[i].status === 'fulfilled' ? imageResults[i].value : null,
-    }));
+    const variantsWithImages = clean.map((v, i) => {
+      const result = imageResults[i];
+      if (result.status === 'rejected') {
+        console.error(`Variant image ${i} (${v.name}) failed:`, result.reason?.message ?? result.reason);
+      } else if (!result.value) {
+        console.error(`Variant image ${i} (${v.name}) returned no image bytes (likely filtered or empty response).`);
+      }
+      return { ...v, image: result.status === 'fulfilled' ? result.value : null };
+    });
+
+    const imageCount = variantsWithImages.filter(v => v.image).length;
+    console.log(`/api/variants: generated ${imageCount}/${variantsWithImages.length} images.`);
 
     res.json({ variants: variantsWithImages });
   } catch (err) {

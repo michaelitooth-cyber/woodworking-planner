@@ -1745,6 +1745,7 @@
         body: JSON.stringify({ project: state.project }),
       });
       const data = await resp.json();
+      console.log('[variants] /api/variants response:', data);
       if (!resp.ok || !data.variants) throw new Error(data.error || 'Bad response');
 
       variantData = data.variants;
