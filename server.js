@@ -318,7 +318,7 @@ Each object must have exactly these fields:
 - "length": integer (millimetres; 0 if not stated)
 - "width": integer (millimetres; 0 if not stated)
 - "thickness": integer (millimetres; 0 if not stated)
-- "category": string (group heading this part belongs to, or empty string)
+- "category": string (short group name for the part's role in the piece, 1–3 words, e.g. "Frame", "Top", "Shelves", "Drawers"; use the plan's own heading if it has one; use "Main parts" if there is no natural grouping)
 
 Include only solid timber/sheet timber pieces. Omit hardware (screws, hinges), consumables, and finishing materials.
 
@@ -352,6 +352,87 @@ ${fullPlanText.slice(0, 6000)}`,
 });
 
 
+
+// ── Exploded view (Claude-generated SVG) ──
+const HEX_COLOUR = /^#[0-9a-fA-F]{6}$/;
+
+// The SVG is shown through an <img>, which never runs script, but strip anything
+// active or external anyway so the markup is safe wherever it ends up.
+function sanitiseSvg(raw) {
+  const match = raw.match(/<svg[\s\S]*<\/svg>/i);
+  if (!match) return null;
+  let svg = match[0]
+    .replace(/<(script|foreignObject|image|iframe|style|animate\w*|set)\b[\s\S]*?(<\/\1>|\/>)/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*')/gi, '')
+    .replace(/\s(?:xlink:)?href\s*=\s*("(?!#)[^"]*"|'(?!#)[^']*')/gi, '')
+    .replace(/javascript:/gi, '');
+  if (!/viewBox\s*=/i.test(svg)) return null;
+  if (!/xmlns\s*=/i.test(svg)) svg = svg.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  return svg.length <= 80000 ? svg : null;
+}
+
+app.post('/api/exploded-view', async (req, res) => {
+  const { project, groups, planText = '' } = req.body;
+  if (!project || typeof project !== 'string' || project.length > 600 ||
+      !Array.isArray(groups) || !groups.length || groups.length > 12 ||
+      typeof planText !== 'string') {
+    return res.status(400).json({ error: 'Invalid exploded view request.' });
+  }
+
+  // Re-validate and flatten the client's numbered, colour-coded groups.
+  let partCount = 0;
+  const lines = [];
+  for (const g of groups) {
+    if (!g || !HEX_COLOUR.test(g.colour) || !Array.isArray(g.parts)) {
+      return res.status(400).json({ error: 'Invalid exploded view request.' });
+    }
+    lines.push(`\nGroup "${String(g.name || 'Parts').slice(0, 40)}" — fill ${g.colour}`);
+    for (const p of g.parts) {
+      partCount++;
+      const dims = Array.isArray(p.dims) ? p.dims.map(n => Math.round(Number(n)) || 0).slice(0, 3) : [0, 0, 0];
+      lines.push(`  ${parseInt(p.n, 10) || partCount}. ${String(p.name ?? '').slice(0, 60)} — ${dims.join(' × ')} mm (length × width × thickness), qty ${parseInt(p.qty, 10) || 1}`);
+    }
+  }
+  if (partCount === 0 || partCount > 40) {
+    return res.status(400).json({ error: 'Invalid exploded view request.' });
+  }
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 8000,
+      system: 'You are a technical illustrator who draws clear, accurate exploded assembly diagrams as SVG. Output only the SVG markup — no explanation, no code fences.',
+      messages: [{
+        role: 'user',
+        content: `Draw an exploded-view assembly diagram of this woodworking project as a single SVG.
+
+Project: ${project}
+
+Numbered parts, grouped and colour-coded:${lines.join('\n')}
+
+Requirements:
+- <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 560"> with a light background rect (#FDFBF6). Fill the canvas sensibly.
+- Isometric or oblique view, with parts pulled apart along their assembly directions, so it's clear how they fit together. Use thin dashed lines to show where each part slots back in.
+- Keep part proportions faithful to the dimensions given. Draw every distinct part once; if a part has qty above 1, draw the copies that show the structure (e.g. both legs you can see), all with the same number.
+- Fill each part with its group's fill colour exactly as given, with a darker outline (stroke of the same hue, 1.5px). Use only those fill colours, plus neutral greys for guide lines.
+- Label every part with its number only, in a white circle (r=11) with a dark outline and bold dark text at font-size 14, placed beside the part with a short leader line. No other text, no title, no legend — the numbers are matched to a parts list elsewhere on the page.
+- Use only <svg>, <g>, <defs>, <path>, <polygon>, <polyline>, <rect>, <line>, <circle>, <ellipse> and <text>. No scripts, styles, images, or external references. Use font-family="sans-serif".
+
+Return only the SVG.${planText ? `\n\nPlan excerpt for joinery and assembly order:\n${planText.slice(0, 3000)}` : ''}`,
+      }],
+    });
+
+    const svg = sanitiseSvg(message.content[0]?.text ?? '');
+    if (!svg) {
+      console.error('[exploded-view] No usable SVG in response.');
+      return res.status(502).json({ error: 'No exploded view generated.' });
+    }
+    res.json({ svg });
+  } catch (err) {
+    console.error('[exploded-view] error:', err.message);
+    res.status(500).json({ error: 'Could not generate exploded view.' });
+  }
+});
 
 // ── Generate 3D Modelling + Visualisation prompts ──
 app.post('/api/generate-prompts', async (req, res) => {

@@ -1188,6 +1188,40 @@
       border-bottom: 1px solid var(--border-light);
     }
     .cl-group-heading:first-child { margin-top: 4px; }
+    .cl-group-heading {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .cl-group-count {
+      margin-left: auto;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-transform: none;
+      color: var(--text-muted);
+    }
+    .cl-swatch {
+      flex: 0 0 auto;
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    /* Numbered badge — matches the number on the exploded view */
+    .cl-num {
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 20px;
+      text-align: center;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
     .cl-row {
       display: flex;
       align-items: center;
@@ -1224,6 +1258,36 @@
       text-align: right;
     }
 
+    /* ── Exploded view ── */
+    .vr-exploded { margin-top: 14px; }
+    .vr-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border-light);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--timber-dark);
+    }
+    .vr-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+    .vr-exploded-body { min-height: 200px; flex-direction: column; gap: 10px; text-align: center; }
+    .vr-exploded-body img { max-width: 900px; margin: 0 auto; }
+    .vr-exploded-body .loading-dots { justify-content: center; }
+    .vr-exploded-note { font-size: 13px; color: var(--text-muted); }
+    .vr-retry {
+      padding: 6px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--action);
+      background: var(--surface-high);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .vr-retry:hover { border-color: var(--timber-light); }
+
     /* ── Print ── */
     @media print {
       /* Hide interactive chrome */
@@ -1254,7 +1318,8 @@
       .visual-ref-section { display: block !important; }
       .visual-ref-grid { grid-template-columns: 3fr 2fr; }
       .visual-ref-panel { break-inside: avoid; }
-      .cl-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .cl-bar, .cl-swatch, .cl-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .vr-retry { display: none !important; }
     }
 
     /* ── Responsive ── */
@@ -1314,9 +1379,13 @@
       }
     }
 
-    @media (max-width: 480px) {
+    /* The parts list needs ~330px; stack it above the joinery panel before it gets cramped */
+    @media (max-width: 640px) {
       .visual-ref-grid { grid-template-columns: 1fr; }
-      .cl-name { flex-basis: 110px; }
+    }
+
+    @media (max-width: 480px) {
+      .cl-name { flex-basis: 96px; }
       .cl-dims { flex-basis: 90px; font-size: 10px; }
 
       .landing-form { padding: 20px 16px; }
@@ -2036,15 +2105,17 @@
 
   // ── Visual Reference ──
 
-  // Timber tones cycling through warm palette — one colour per part group
+  // One colour per part group. Muted hues chosen to sit well with the timber theme
+  // while staying easy to tell apart; the same colours are sent to the exploded view.
   const CL_COLOURS = [
-    '#C8956C', // light pine
-    '#A07040', // rich oak
-    '#8B5E3C', // dark walnut
-    '#D4A574', // blonde maple
-    '#B07844', // jarrah
-    '#7A4F2A', // deep timber
-    '#E0B888', // pale ash
+    '#B5543A', // terracotta
+    '#2F7F8F', // teal
+    '#C99A2E', // ochre
+    '#6B8E4E', // eucalypt
+    '#7A5C9E', // plum
+    '#3E5C8A', // navy
+    '#9C6B3E', // timber brown
+    '#C2698B', // dusty rose
   ];
 
   // Maps plan text to a static joinery library image.
@@ -2168,15 +2239,28 @@
     wrap.className = 'cutlist-layout';
 
     for (const g of groups) {
-      if (g.group) {
+      if (g.group || groups.length > 1) {
         const hd = document.createElement('div');
         hd.className = 'cl-group-heading';
-        hd.textContent = g.group;
+        const sw = document.createElement('span');
+        sw.className = 'cl-swatch';
+        sw.style.background = g.colour;
+        const label = document.createElement('span');
+        label.textContent = g.group || 'Parts';
+        const count = document.createElement('span');
+        count.className = 'cl-group-count';
+        count.textContent = `${g.parts.length} ${g.parts.length === 1 ? 'part' : 'parts'}`;
+        hd.append(sw, label, count);
         wrap.appendChild(hd);
       }
       for (const p of g.parts) {
         const row = document.createElement('div');
         row.className = 'cl-row';
+
+        const numEl = document.createElement('div');
+        numEl.className = 'cl-num';
+        numEl.style.background = g.colour;
+        numEl.textContent = p.n;
 
         const nameEl = document.createElement('div');
         nameEl.className = 'cl-name';
@@ -2195,6 +2279,7 @@
         dimsEl.className = 'cl-dims';
         dimsEl.textContent = `${p.dims[0]} × ${p.dims[1]} × ${p.dims[2]}`;
 
+        row.appendChild(numEl);
         row.appendChild(nameEl);
         row.appendChild(track);
         row.appendChild(dimsEl);
@@ -2202,6 +2287,80 @@
       }
     }
     return wrap;
+  }
+
+  // Number parts 1…N across all groups so the list and the exploded view can cross-reference.
+  function numberParts(groups) {
+    let n = 0;
+    for (const g of groups) for (const p of g.parts) p.n = ++n;
+  }
+
+  // Colour key shown above the exploded view.
+  function renderLegend(groups) {
+    const legend = document.createElement('div');
+    legend.className = 'vr-legend';
+    for (const g of groups) {
+      const item = document.createElement('span');
+      item.className = 'vr-legend-item';
+      const sw = document.createElement('span');
+      sw.className = 'cl-swatch';
+      sw.style.background = g.colour;
+      item.append(sw, g.group || 'Parts');
+      legend.appendChild(item);
+    }
+    return legend;
+  }
+
+  // Ask Claude for the exploded-view SVG and show it in `body`. It is displayed through an
+  // <img> (inert — no script can run) after checking it parses as well-formed SVG.
+  async function loadExplodedView(body, groups) {
+    body.innerHTML = `
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div class="vr-exploded-note">Drawing your exploded view&hellip; this can take up to 30 seconds.</div>`;
+
+    const fail = () => {
+      body.innerHTML = '<div class="vr-exploded-note">The exploded view isn&rsquo;t available right now.</div>';
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'vr-retry';
+      retry.textContent = 'Try again';
+      retry.addEventListener('click', () => loadExplodedView(body, groups));
+      body.appendChild(retry);
+    };
+
+    try {
+      const resp = await fetch('/api/exploded-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project:  state.project,
+          planText: vrPlanText.slice(0, 3000),
+          groups:   groups.map(g => ({
+            name:   g.group || 'Parts',
+            colour: g.colour,
+            parts:  g.parts.map(p => ({ n: p.n, name: p.name, qty: p.qty, dims: p.dims })),
+          })),
+        }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const { svg } = await resp.json();
+
+      const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+      if (doc.querySelector('parsererror') || doc.documentElement.nodeName !== 'svg') {
+        throw new Error('Malformed SVG');
+      }
+      if (!body.isConnected) return; // sheet was regenerated or reset while waiting
+
+      const img = document.createElement('img');
+      img.alt = 'Exploded view showing how the numbered parts fit together';
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      img.addEventListener('error', fail);
+      body.innerHTML = '';
+      body.appendChild(img);
+    } catch (e) {
+      console.warn('[VR] exploded view failed:', e.message);
+      if (body.isConnected) fail();
+    }
   }
 
   // Build and inject the Visual Reference Sheet — fully synchronous, no API calls.
@@ -2226,6 +2385,7 @@
       groups = vrCutList ? parseCutList(vrCutList) : [];
       console.log('[VR] falling back to text parser → groups:', groups);
     }
+    numberParts(groups);
     const partsEl = renderCutList(groups);
     console.log('[VR] renderCutList result:', partsEl);
 
@@ -2282,6 +2442,22 @@
     }
 
     vrSection.appendChild(grid);
+
+    // Exploded view — full width beneath the parts list; fills in when Claude responds
+    if (groups.length) {
+      const explodedPanel = document.createElement('div');
+      explodedPanel.className = 'visual-ref-panel vr-exploded';
+      const explodedLbl = document.createElement('div');
+      explodedLbl.className   = 'vr-label';
+      explodedLbl.textContent = 'Exploded View';
+      explodedPanel.appendChild(explodedLbl);
+      explodedPanel.appendChild(renderLegend(groups));
+      const explodedBody = document.createElement('div');
+      explodedBody.className = 'vr-body vr-exploded-body';
+      explodedPanel.appendChild(explodedBody);
+      vrSection.appendChild(explodedPanel);
+      loadExplodedView(explodedBody, groups);
+    }
 
     const attr = document.createElement('p');
     attr.className   = 'vr-attribution';
