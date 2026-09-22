@@ -137,6 +137,74 @@ Return exactly this structure:
   }
 });
 
+// Callout labels must stay under 5 characters: bare millimetres (Australian drawing
+// convention), or whole metres for anything of 10 m or more.
+function dimensionLabel(mm) {
+  return mm < 10000 ? String(mm) : `${Math.round(mm / 1000)}m`;
+}
+
+// Pull the finished piece's overall size (mm) out of the plan text. Returns null unless
+// all three values are present, so the sketch never shows an invented dimension.
+async function extractOverallDimensions(planText) {
+  const message = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 200,
+    messages: [{
+      role: 'user',
+      content: `From this woodworking plan, give the overall finished dimensions of the completed piece in millimetres. Return ONLY a JSON object like {"width": 900, "height": 450, "depth": 400} — no other text.
+
+- width: the longest horizontal side as seen from the front
+- height: vertical size, floor or base to top
+- depth: front to back
+- Use the overall dimensions if the plan states them; otherwise derive them from the cut list. Do not guess.
+- Use 0 for any value that cannot be determined from the plan.
+
+Plan:
+${planText.slice(0, 6000)}`,
+    }],
+  });
+  const raw = message.content[0]?.text ?? '';
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  const parsed = JSON.parse(match[0]);
+  const dims = ['width', 'height', 'depth'].map(k => Math.round(Number(parsed[k])));
+  return dims.every(n => Number.isFinite(n) && n > 0 && n <= 20000)
+    ? { width: dims[0], height: dims[1], depth: dims[2] }
+    : null;
+}
+
+// Project sketch for the plan page — same look as the variant image, but generated
+// with the higher-quality model and carrying real overall width / height / depth callouts.
+app.post('/api/sketch', async (req, res) => {
+  const { project, variant, planText } = req.body;
+  if (!project || typeof project !== 'string' || project.length > 600 ||
+      !variant || typeof variant.name !== 'string' || !variant.name || variant.name.length > 60 ||
+      typeof planText !== 'string' || !planText || planText.length > 30000) {
+    return res.status(400).json({ error: 'Invalid sketch request.' });
+  }
+
+  try {
+    const dims = await extractOverallDimensions(planText);
+    if (!dims) {
+      console.warn(`Sketch (${variant.name}): overall dimensions not found in plan; skipping.`);
+      return res.status(422).json({ error: 'Overall dimensions not available.' });
+    }
+
+    const image = await generateImage(
+      `Isometric illustration of a ${project} in ${variant.name} style, woodworking project, warm timber tones, clean workshop setting, soft natural lighting, white background. Add exactly three short dimension callouts, with thin dimension lines, showing the overall width ("${dimensionLabel(dims.width)}"), height ("${dimensionLabel(dims.height)}") and depth ("${dimensionLabel(dims.depth)}") of the piece, with each label written exactly as given. No other text, no other numbers, no other labels or measurements`,
+      SKETCH_IMAGE_MODEL
+    );
+    if (!image) {
+      console.error(`Sketch (${variant.name}) returned no image bytes (likely filtered or empty response).`);
+      return res.status(502).json({ error: 'No sketch generated.' });
+    }
+    res.json({ image });
+  } catch (err) {
+    console.error('Sketch error:', err.message);
+    res.status(500).json({ error: 'Could not generate sketch.' });
+  }
+});
+
 app.post('/api/generate', async (req, res) => {
   const { project, experience, tools, timber, variant, variantImage } = req.body;
 

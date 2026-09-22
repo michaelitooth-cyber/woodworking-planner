@@ -1815,6 +1815,21 @@
   }
 
   // ── Generate plan ──
+  // Dimensioned project sketch. The server reads the overall size from the finished plan text,
+  // so this runs once the plan is complete. Resolves to null on any failure (caller falls back
+  // to the variant image).
+  function requestSketch(planText) {
+    if (!state.variant?.name) return Promise.resolve(null);
+    return fetch('/api/sketch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ project: state.project, variant: { name: state.variant.name }, planText }),
+    })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => d?.image ?? null)
+      .catch(() => null);
+  }
+
   async function startGenerating() {
     buildSummaryCard();
     showScreen('screen-results');
@@ -1933,7 +1948,7 @@
               try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
               const cutListMatch = after.match(/##\s*Materials[\s\S]*?(?=\n##|$)/i);
               vrCutList = cutListMatch ? cutListMatch[0] : '';
-              showVariantSketch();
+              showVariantSketch(accumulated);
             } else {
               // Materials section never appeared — render the whole plan, skip sketch
               const bodyEl = planEl.querySelector('.plan-body');
@@ -2000,12 +2015,12 @@
     return section;
   }
 
-  function showVariantSketch() {
+  async function showVariantSketch(planText) {
     const sketchSection = document.getElementById('sketch-section');
     const sketchBox = document.getElementById('sketch-box');
     if (!sketchBox) return;
 
-    const image = state.variant?.image;
+    const image = (await requestSketch(planText)) ?? state.variant?.image;
     if (!image) {
       sketchSection?.remove();
       return;
