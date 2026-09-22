@@ -23,24 +23,23 @@ const client = new Anthropic();
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
 // Imagen 4 (standard/ultra/fast) was shut down by Google on 2026-08-17.
-// Image generation now goes through the Gemini Interactions API.
+// Image generation uses generateContent on the Gemini 3.1 Flash Image models.
 // Flash-Lite for variant thumbnails (speed); Flash for higher-quality project sketches.
 const VARIANT_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
 const SKETCH_IMAGE_MODEL  = 'gemini-3.1-flash-image';
 
 async function generateImage(prompt, model) {
-  const interaction = await genAI.interactions.create({
+  const response = await genAI.models.generateContent({
     model,
-    input: prompt,
-    response_modalities: ['image'],
-    response_format: { type: 'image', aspect_ratio: '1:1', mime_type: 'image/jpeg', delivery: 'inline' },
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    config: { responseModalities: ['TEXT', 'IMAGE'] },
   });
-  // Generated images arrive as `image` content inside the model_output steps.
-  const image = interaction.steps
-    ?.flatMap(step => (step.type === 'model_output' ? step.content ?? [] : []))
-    .find(c => c.type === 'image' && c.data);
-  if (!image) return null;
-  return `data:${image.mime_type || 'image/jpeg'};base64,${image.data}`;
+  // Images come back as inlineData parts (mimeType + base64 data), alongside any text parts.
+  const parts = response.candidates?.[0]?.content?.parts ?? [];
+  const imagePart = parts.find(p => p.inlineData?.data);
+  if (!imagePart) return null;
+  const { data, mimeType } = imagePart.inlineData;
+  return `data:${mimeType || 'image/jpeg'};base64,${data}`;
 }
 
 const SYSTEM_PROMPT = `You are an experienced Australian woodworker and friendly mentor. You help hobby woodworkers — many of them older Australians — plan their projects with practical, encouraging advice.
