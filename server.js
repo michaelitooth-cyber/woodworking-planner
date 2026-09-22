@@ -22,24 +22,25 @@ if (!process.env.GEMINI_API_KEY) {
 const client = new Anthropic();
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 
-// Imagen 4 (standard/ultra/fast) was shut down by Google on 2026-08-17;
-// gemini-3.1-flash-image is the recommended native-image-generation replacement.
-const IMAGE_MODEL = 'gemini-3.1-flash-image';
+// Imagen 4 (standard/ultra/fast) was shut down by Google on 2026-08-17.
+// Image generation now goes through the Gemini Interactions API.
+// Flash-Lite for variant thumbnails (speed); Flash for higher-quality project sketches.
+const VARIANT_IMAGE_MODEL = 'gemini-3.1-flash-lite-image';
+const SKETCH_IMAGE_MODEL  = 'gemini-3.1-flash-image';
 
-async function generateImagenImage(prompt) {
-  const response = await genAI.models.generateContent({
-    model: IMAGE_MODEL,
-    contents: prompt,
-    config: {
-      responseModalities: ['IMAGE'],
-      imageConfig: { aspectRatio: '1:1' },
-    },
+async function generateImage(prompt, model) {
+  const interaction = await genAI.interactions.create({
+    model,
+    input: prompt,
+    response_modalities: ['image'],
+    response_format: { type: 'image', aspect_ratio: '1:1', mime_type: 'image/jpeg', delivery: 'inline' },
   });
-  const parts = response.candidates?.[0]?.content?.parts ?? [];
-  const imagePart = parts.find(p => p.inlineData?.data);
-  if (!imagePart) return null;
-  const { data, mimeType } = imagePart.inlineData;
-  return `data:${mimeType || 'image/jpeg'};base64,${data}`;
+  // Generated images arrive as `image` content inside the model_output steps.
+  const image = interaction.steps
+    ?.flatMap(step => (step.type === 'model_output' ? step.content ?? [] : []))
+    .find(c => c.type === 'image' && c.data);
+  if (!image) return null;
+  return `data:${image.mime_type || 'image/jpeg'};base64,${image.data}`;
 }
 
 const SYSTEM_PROMPT = `You are an experienced Australian woodworker and friendly mentor. You help hobby woodworkers — many of them older Australians — plan their projects with practical, encouraging advice.
@@ -110,8 +111,9 @@ Return exactly this structure:
     // doesn't fail the whole request, but we log it so it's visible in Vercel logs
     // instead of silently showing up as a card with no image.
     const imageResults = await Promise.allSettled(
-      clean.map(v => generateImagenImage(
-        `Isometric illustration of a ${project} in ${v.name} style, woodworking project, warm timber tones, clean workshop setting, no text, no measurements, no dimension lines, no labels, no numbers, soft natural lighting, white background`
+      clean.map(v => generateImage(
+        `Isometric illustration of a ${project} in ${v.name} style, woodworking project, warm timber tones, clean workshop setting, no text, no measurements, no dimension lines, no labels, no numbers, soft natural lighting, white background`,
+        VARIANT_IMAGE_MODEL
       ))
     );
 
