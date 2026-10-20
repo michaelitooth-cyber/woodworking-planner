@@ -1078,31 +1078,6 @@
     }
 
     /* ── Visual Reference ── */
-    .visual-ref-bar {
-      margin-top: 24px;
-      margin-bottom: 8px;
-    }
-    .btn-visual-ref {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 9px 16px;
-      background: var(--surface-high);
-      color: var(--action);
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 600;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: background 0.18s, border-color 0.18s;
-    }
-    .btn-visual-ref:hover:not(:disabled) {
-      background: var(--surface);
-      border-color: var(--timber-light);
-    }
-    .btn-visual-ref:disabled { opacity: 0.6; cursor: not-allowed; }
-
     .visual-ref-section {
       margin-top: 28px;
       padding-top: 24px;
@@ -1175,7 +1150,7 @@
       grid-template-columns: 1fr;
     }
 
-    /* ── Cut-list proportional layout ── */
+    /* ── Cut-list layout ── */
     .cutlist-layout { width: 100%; }
     .cl-group-heading {
       font-size: 11px;
@@ -1208,7 +1183,7 @@
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    /* Numbered badge — matches the number on the exploded view */
+    /* Numbered badge — matches the number on the Visual Parts Sheet */
     .cl-num {
       flex: 0 0 auto;
       width: 20px;
@@ -1229,25 +1204,14 @@
       padding: 3px 0;
     }
     .cl-name {
-      flex: 0 0 150px;
+      flex: 1 1 0;
+      min-width: 0;
       font-size: 12px;
       font-weight: 500;
       color: var(--timber-dark);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    .cl-bar-track {
-      flex: 1 1 0;
-      height: 16px;
-      background: var(--surface);
-      border: 1px solid var(--border-light);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .cl-bar {
-      height: 100%;
-      border-radius: 3px;
     }
     .cl-dims {
       flex: 0 0 118px;
@@ -1258,42 +1222,24 @@
       text-align: right;
     }
 
-    /* ── Exploded view ── */
-    .vr-exploded { margin-top: 14px; }
-    .vr-legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px 16px;
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border-light);
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--timber-dark);
+    /* ── Visual Parts Sheet (inline SVG isometric blocks) ── */
+    .vps { container-type: inline-size; margin-bottom: 18px; }
+    .vps-caption { font-size: 12px; color: var(--text-muted); margin: -8px 0 4px; }
+    .vps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
     }
-    .vr-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-    .vr-exploded-body { min-height: 200px; flex-direction: column; gap: 10px; text-align: center; }
-    .vr-exploded-body img { max-width: 900px; margin: 0 auto; }
-    .vr-exploded-body .loading-dots { justify-content: center; }
-    .vr-exploded-note { font-size: 13px; color: var(--text-muted); }
-    .vr-retry {
-      padding: 6px 14px;
-      font-family: inherit;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--action);
-      background: var(--surface-high);
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-    }
-    .vr-retry:hover { border-color: var(--timber-light); }
+    @container (min-width: 860px) { .vps-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+    @container (max-width: 460px) { .vps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .vps-cell { display: block; width: 100%; height: auto; }
+    .vps-cell text { font-family: inherit; }
 
     /* ── Print ── */
     @media print {
       /* Hide interactive chrome */
       .action-panel,
       .feedback-section,
-      .visual-ref-bar,
       footer,
       .wordmark,
       .wordmark-rule,
@@ -1318,8 +1264,9 @@
       .visual-ref-section { display: block !important; }
       .visual-ref-grid { grid-template-columns: 3fr 2fr; }
       .visual-ref-panel { break-inside: avoid; }
-      .cl-bar, .cl-swatch, .cl-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      .vr-retry { display: none !important; }
+      .cl-swatch, .cl-num { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .vps-cell { break-inside: avoid; }
+      .vps-group .cl-group-heading { break-after: avoid; }
     }
 
     /* ── Responsive ── */
@@ -1642,11 +1589,6 @@
           <span>Print / Save as PDF</span>
         </button>
 
-        <button id="btn-visual-ref-panel" class="btn-action loading" disabled>
-          <span class="btn-action-spinner"></span>
-          <span>Visual Reference Sheet</span>
-        </button>
-
         <button id="btn-3d-prompt" class="btn-action loading" disabled>
           <span class="btn-action-spinner"></span>
           <span>3D Modelling Prompt</span>
@@ -1905,9 +1847,9 @@
 
     const planEl  = document.getElementById('plan-output');
     const panelEl = document.getElementById('action-panel');
-    // Show panel immediately; all five content buttons start in loading state
+    // Show panel immediately; all content buttons start in loading state
     panelEl.style.display = '';
-    ['btn-print', 'btn-visual-ref-panel', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
+    ['btn-print', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
       const btn = document.getElementById(id);
       btn.disabled = true;
       btn.classList.add('loading');
@@ -2033,26 +1975,12 @@
             } else {
               console.warn('[SSE done] no cutListData in response — will fall back to text parser');
             }
-            if (part2El) {
-              const vrBar = document.createElement('div');
-              vrBar.className = 'visual-ref-bar';
-              const vrBtn = document.createElement('button');
-              vrBtn.id        = 'btn-visual-ref';
-              vrBtn.className = 'btn-visual-ref';
-              vrBtn.textContent = 'View Visual Reference';
-              vrBar.appendChild(vrBtn);
-              const h2s = part2El.querySelectorAll('h2');
-              if (h2s.length >= 2) {
-                part2El.insertBefore(vrBar, h2s[1]); // before Step-by-Step heading
-              } else {
-                part2El.appendChild(vrBar);          // fallback: end of section
-              }
-              vrBtn.addEventListener('click', generateVisualReference);
-            }
+            // The Visual Parts Sheet renders automatically at the end of the Materials section
+            if (part2El) renderVisualReference(part2El);
 
             gtag('event', 'plan_generated', { project_description: state.project });
             // Activate plan-complete buttons; 3D/vis buttons stay loading until prompts arrive
-            ['btn-print', 'btn-visual-ref-panel', 'btn-feedback-toggle'].forEach(id => {
+            ['btn-print', 'btn-feedback-toggle'].forEach(id => {
               const btn = document.getElementById(id);
               btn.disabled = false;
               btn.classList.remove('loading');
@@ -2106,7 +2034,7 @@
   // ── Visual Reference ──
 
   // One colour per part group. Muted hues chosen to sit well with the timber theme
-  // while staying easy to tell apart; the same colours are sent to the exploded view.
+  // while staying easy to tell apart; group n takes colour n (terracotta, teal, ochre, eucalypt…).
   const CL_COLOURS = [
     '#B5543A', // terracotta
     '#2F7F8F', // teal
@@ -2198,7 +2126,8 @@
   }
 
   // Build structured groups from the server-extracted JSON cut list data.
-  // Returns the same [{group, colour, parts:[{name, qty, dims}]}] format as parseCutList.
+  // Returns the same [{group, colour, parts:[{name, qty, dims, num}]}] format as parseCutList.
+  // `num` is the part's number in the plan's cut list table, when the server found one.
   function buildGroupsFromData(data) {
     if (!Array.isArray(data) || !data.length) return [];
     const groups = [];
@@ -2218,22 +2147,16 @@
       const l    = parseInt(item.length,   10) || 0;
       const w    = parseInt(item.width,    10) || 0;
       const t    = parseInt(item.thickness,10) || 0;
+      const num  = parseInt(item.number,   10) || 0;
       const displayName = qty > 1 ? `${item.partName} × ${qty}` : item.partName;
-      grp.parts.push({ name: displayName, qty, dims: [l, w, t] });
+      grp.parts.push({ name: displayName, qty, dims: [l, w, t], num });
     }
     return groups;
   }
 
-  // Build the DOM element for the proportional cut-list layout.
+  // Build the DOM element for the numbered parts list.
   function renderCutList(groups) {
     if (!groups.length) return null;
-
-    // Maximum first dimension (length) across all parts — used for bar widths
-    let maxLen = 0;
-    for (const g of groups)
-      for (const p of g.parts)
-        if (p.dims[0] > maxLen) maxLen = p.dims[0];
-    if (maxLen === 0) maxLen = 1;
 
     const wrap = document.createElement('div');
     wrap.className = 'cutlist-layout';
@@ -2267,21 +2190,12 @@
         nameEl.title     = p.name;       // tooltip for truncated names
         nameEl.textContent = p.name;
 
-        const track = document.createElement('div');
-        track.className = 'cl-bar-track';
-        const bar = document.createElement('div');
-        bar.className = 'cl-bar';
-        bar.style.width      = `${Math.max(3, Math.round((p.dims[0] / maxLen) * 100))}%`;
-        bar.style.background = g.colour;
-        track.appendChild(bar);
-
         const dimsEl = document.createElement('div');
         dimsEl.className = 'cl-dims';
         dimsEl.textContent = `${p.dims[0]} × ${p.dims[1]} × ${p.dims[2]}`;
 
         row.appendChild(numEl);
         row.appendChild(nameEl);
-        row.appendChild(track);
         row.appendChild(dimsEl);
         wrap.appendChild(row);
       }
@@ -2289,124 +2203,231 @@
     return wrap;
   }
 
-  // Number parts 1…N across all groups so the list and the exploded view can cross-reference.
+  // Number parts so the list and the Visual Parts Sheet match the cut list table.
+  // Uses the table's own numbers when the server found a complete, unique set;
+  // otherwise falls back to 1…N in list order.
   function numberParts(groups) {
-    let n = 0;
-    for (const g of groups) for (const p of g.parts) p.n = ++n;
+    const parts = groups.flatMap(g => g.parts);
+    const nums  = parts.map(p => p.num);
+    const usable = nums.every(n => Number.isInteger(n) && n > 0) && new Set(nums).size === nums.length;
+    parts.forEach((p, i) => { p.n = usable ? p.num : i + 1; });
   }
 
-  // Colour key shown above the exploded view.
-  function renderLegend(groups) {
-    const legend = document.createElement('div');
-    legend.className = 'vr-legend';
+  // ── Visual Parts Sheet: isometric timber blocks drawn as inline SVG ──
+  const SVG_NS    = 'http://www.w3.org/2000/svg';
+  const ISO_COS   = Math.cos(Math.PI / 6); // 30° isometric axes
+  const ISO_SIN   = 0.5;
+  const VPS_W     = 240;  // cell viewBox width (all cells share it, so one px-per-mm scale applies sheet-wide)
+  const VPS_PAD   = 14;
+  const VPS_LABEL = 66;   // room for the badge, name (up to 2 lines) and dimensions
+  const VPS_MAX_BLOCK_H = 170;
+  const VPS_MIN_EDGE    = 3; // keep very small sections visible
+
+  function svgEl(tag, attrs, text) {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+
+  // Mix a #RRGGBB colour toward white (amt > 0) or black (amt < 0).
+  function shadeHex(hex, amt) {
+    const target = amt < 0 ? 0 : 255;
+    const a = Math.abs(amt);
+    const ch = [1, 3, 5].map(i => {
+      const v = parseInt(hex.slice(i, i + 2), 16);
+      return Math.round(v + (target - v) * a).toString(16).padStart(2, '0');
+    });
+    return '#' + ch.join('');
+  }
+
+  // Wrap a name onto at most two lines of ~maxChars, ellipsising any overflow.
+  function wrapName(name, maxChars) {
+    const words = String(name).split(/\s+/).filter(Boolean);
+    const lines = [''];
+    for (const w of words) {
+      const cur = lines[lines.length - 1];
+      if (!cur || (cur + ' ' + w).length <= maxChars) {
+        lines[lines.length - 1] = cur ? cur + ' ' + w : w;
+      } else if (lines.length < 2) {
+        lines.push(w);
+      } else {
+        lines[1] += ' ' + w;
+      }
+    }
+    return lines.map((l, i) => (i === 1 && l.length > maxChars) ? l.slice(0, maxChars - 1).trimEnd() + '…'
+                              : (i === 0 && l.length > maxChars) ? l.slice(0, maxChars - 1).trimEnd() + '…' : l);
+  }
+
+  // One part → one <svg> cell. Block pixel sizes come from `scale` (px per mm), so they stay
+  // proportional to the real dimensions. `areaH` is the height reserved for the block.
+  function buildPartCell(p, colour, scale, areaH) {
+    const [L, W, T] = p.dims;
+    const known = L > 0 && W > 0 && T > 0;
+    const H = areaH + VPS_LABEL;
+    const dimsText = `${L || '?'} × ${W || '?'} × ${T || '?'} mm`;
+
+    const svg = svgEl('svg', {
+      class: 'vps-cell',
+      viewBox: `0 0 ${VPS_W} ${H}`,
+      role: 'img',
+      'aria-label': `Part ${p.n}: ${p.name}, ${dimsText}`,
+    });
+    svg.appendChild(svgEl('title', {}, `${p.n}. ${p.name} — ${dimsText}`));
+    svg.appendChild(svgEl('rect', { x: 0.5, y: 0.5, width: VPS_W - 1, height: H - 1, rx: 6, fill: '#FDFBF6', stroke: '#DDD0B0' }));
+
+    if (known) {
+      const lPx = Math.max(L * scale, VPS_MIN_EDGE);
+      const wPx = Math.max(W * scale, VPS_MIN_EDGE);
+      const tPx = Math.max(T * scale, VPS_MIN_EDGE);
+      const lx = lPx * ISO_COS, ly = lPx * ISO_SIN;   // length axis → right and down
+      const wx = wPx * ISO_COS, wy = wPx * ISO_SIN;   // width axis  → left and down
+      const blockW = lx + wx, blockH = ly + wy + tPx;
+
+      const ax = (VPS_W - blockW) / 2 + wx;           // back corner of the top face
+      const ay = (areaH - blockH) / 2;
+      const pt = (x, y) => `${x.toFixed(2)},${y.toFixed(2)}`;
+      const A = [ax, ay], B = [ax + lx, ay + ly], D = [ax - wx, ay + wy], C = [ax + lx - wx, ay + ly + wy];
+
+      const top   = shadeHex(colour,  0.28);
+      const front = colour;
+      const side  = shadeHex(colour, -0.22);
+      const edge  = shadeHex(colour, -0.42);
+      const face = (pts, fill) => svgEl('polygon', {
+        points: pts.map(q => pt(q[0], q[1])).join(' '),
+        fill, stroke: edge, 'stroke-width': 1, 'stroke-linejoin': 'round',
+      });
+
+      const g = svgEl('g', {});
+      g.appendChild(face([D, C, [C[0], C[1] + tPx], [D[0], D[1] + tPx]], front));  // long face
+      g.appendChild(face([B, C, [C[0], C[1] + tPx], [B[0], B[1] + tPx]], side));   // end face
+      g.appendChild(face([A, B, C, D], top));                                       // top face
+      if (wPx >= 9) {                                                               // grain along the length
+        for (const f of [1 / 3, 2 / 3]) {
+          const sx = A[0] - wx * f, sy = A[1] + wy * f;
+          g.appendChild(svgEl('line', {
+            x1: sx.toFixed(2), y1: sy.toFixed(2), x2: (sx + lx).toFixed(2), y2: (sy + ly).toFixed(2),
+            stroke: edge, 'stroke-opacity': 0.35, 'stroke-width': 0.75,
+          }));
+        }
+      }
+      svg.appendChild(g);
+    } else {
+      svg.appendChild(svgEl('rect', {
+        x: VPS_PAD, y: 14, width: VPS_W - 2 * VPS_PAD, height: areaH - 28, rx: 4,
+        fill: 'none', stroke: colour, 'stroke-width': 1.25, 'stroke-dasharray': '5 4',
+      }));
+      svg.appendChild(svgEl('text', {
+        x: VPS_W / 2, y: areaH / 2 + 4, 'text-anchor': 'middle', 'font-size': 12, fill: '#7B5D3F',
+      }, 'Size not given'));
+    }
+
+    // Number badge, name and dimensions — real SVG text
+    const ly0 = areaH + 20;
+    svg.appendChild(svgEl('circle', { cx: VPS_PAD + 10, cy: ly0 - 4, r: 10, fill: colour }));
+    svg.appendChild(svgEl('text', {
+      x: VPS_PAD + 10, y: ly0, 'text-anchor': 'middle', 'font-size': String(p.n).length > 2 ? 9 : 11,
+      'font-weight': 700, fill: '#fff',
+    }, String(p.n)));
+    const nameLines = wrapName(p.name, 25);
+    nameLines.forEach((line, i) => {
+      svg.appendChild(svgEl('text', {
+        x: VPS_PAD + 28, y: ly0 + i * 15, 'font-size': 13, 'font-weight': 600, fill: '#3B1F08',
+      }, line));
+    });
+    svg.appendChild(svgEl('text', {
+      x: VPS_PAD + 28, y: ly0 + nameLines.length * 15, 'font-size': 12, fill: '#7B5D3F',
+    }, dimsText));
+    return svg;
+  }
+
+  // Build the whole sheet: a heading + grid of cells per assembly group.
+  function buildPartsSheet(groups) {
+    const parts = groups.flatMap(g => g.parts).filter(p => p.dims.every(d => d > 0));
+
+    // One scale for every block: the widest part fills a cell, no block gets taller than the cap.
+    let scale = 0.5;
+    if (parts.length) {
+      const maxSpan = Math.max(...parts.map(p => p.dims[0] + p.dims[1]));
+      scale = Math.min(scale, (VPS_W - 2 * VPS_PAD) / (maxSpan * ISO_COS));
+      for (const p of parts) {
+        const [L, W, T] = p.dims;
+        scale = Math.min(scale, VPS_MAX_BLOCK_H / ((L + W) * ISO_SIN + T));
+      }
+    }
+    const blockHeight = p => {
+      const [L, W, T] = p.dims;
+      if (!(L > 0 && W > 0 && T > 0)) return 60;
+      return (Math.max(L * scale, VPS_MIN_EDGE) + Math.max(W * scale, VPS_MIN_EDGE)) * ISO_SIN
+             + Math.max(T * scale, VPS_MIN_EDGE);
+    };
+
+    const sheet = document.createElement('div');
+    sheet.className = 'vps';
+    const caption = document.createElement('p');
+    caption.className = 'vps-caption';
+    caption.textContent = 'Blocks are drawn to one common scale (length × width × thickness in mm), so relative sizes are accurate. Numbers match the cut list.';
+    sheet.appendChild(caption);
+
     for (const g of groups) {
-      const item = document.createElement('span');
-      item.className = 'vr-legend-item';
+      if (!g.parts.length) continue;
+      const section = document.createElement('div');
+      section.className = 'vps-group';
+
+      const hd = document.createElement('div');
+      hd.className = 'cl-group-heading';
       const sw = document.createElement('span');
       sw.className = 'cl-swatch';
       sw.style.background = g.colour;
-      item.append(sw, g.group || 'Parts');
-      legend.appendChild(item);
+      const label = document.createElement('span');
+      label.textContent = g.group || 'Parts';
+      const count = document.createElement('span');
+      count.className = 'cl-group-count';
+      count.textContent = `${g.parts.length} ${g.parts.length === 1 ? 'part' : 'parts'}`;
+      hd.append(sw, label, count);
+      section.appendChild(hd);
+
+      const areaH = Math.ceil(Math.max(...g.parts.map(blockHeight)) + 28);
+      const grid = document.createElement('div');
+      grid.className = 'vps-grid';
+      for (const p of g.parts) grid.appendChild(buildPartCell(p, g.colour, scale, areaH));
+      section.appendChild(grid);
+      sheet.appendChild(section);
     }
-    return legend;
+    return sheet;
   }
 
-  // Ask Claude for the exploded-view SVG and show it in `body`. It is displayed through an
-  // <img> (inert — no script can run) after checking it parses as well-formed SVG.
-  async function loadExplodedView(body, groups) {
-    body.innerHTML = `
-      <div class="loading-dots"><span></span><span></span><span></span></div>
-      <div class="vr-exploded-note">Drawing your exploded view&hellip; this can take up to 30 seconds.</div>`;
-
-    const fail = () => {
-      body.innerHTML = '<div class="vr-exploded-note">The exploded view isn&rsquo;t available right now.</div>';
-      const retry = document.createElement('button');
-      retry.type = 'button';
-      retry.className = 'vr-retry';
-      retry.textContent = 'Try again';
-      retry.addEventListener('click', () => loadExplodedView(body, groups));
-      body.appendChild(retry);
-    };
-
-    try {
-      const resp = await fetch('/api/exploded-view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project:  state.project,
-          planText: vrPlanText.slice(0, 3000),
-          groups:   groups.map(g => ({
-            name:   g.group || 'Parts',
-            colour: g.colour,
-            parts:  g.parts.map(p => ({ n: p.n, name: p.name, qty: p.qty, dims: p.dims })),
-          })),
-        }),
-      });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const { svg } = await resp.json();
-
-      const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
-      if (doc.querySelector('parsererror') || doc.documentElement.nodeName !== 'svg') {
-        throw new Error('Malformed SVG');
-      }
-      if (!body.isConnected) return; // sheet was regenerated or reset while waiting
-
-      const img = document.createElement('img');
-      img.alt = 'Exploded view showing how the numbered parts fit together';
-      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-      img.addEventListener('error', fail);
-      body.innerHTML = '';
-      body.appendChild(img);
-    } catch (e) {
-      console.warn('[VR] exploded view failed:', e.message);
-      if (body.isConnected) fail();
-    }
-  }
-
-  // Build and inject the Visual Reference Sheet — fully synchronous, no API calls.
-  function generateVisualReference() {
-    // Either the inline plan button or the sidebar button may trigger this
-    const btn        = document.getElementById('btn-visual-ref');
-    const sidebarBtn = document.getElementById('btn-visual-ref-panel');
-    if (btn) btn.disabled = true;
-    if (sidebarBtn) { sidebarBtn.disabled = true; sidebarBtn.querySelector('span:last-child').textContent = 'Generating…'; }
-
-    const joineryImagePath = matchJoineryImage(vrPlanText);
-    const hasJoinery       = Boolean(joineryImagePath);
-
-    console.log('[VR] vrCutListData (structured):', vrCutListData);
-    console.log('[VR] vrCutList (raw markdown):', vrCutList);
+  // Build the Visual Reference Sheet and place it at the end of the Materials and Cut List
+  // section (just before the next heading). Pure client-side — no API calls.
+  function renderVisualReference(planRoot) {
+    planRoot.querySelector('.visual-ref-section')?.remove();
 
     let groups;
     if (vrCutListData) {
       groups = buildGroupsFromData(vrCutListData);
-      console.log('[VR] using structured data → groups:', groups);
     } else {
       groups = vrCutList ? parseCutList(vrCutList) : [];
-      console.log('[VR] falling back to text parser → groups:', groups);
     }
+    groups = groups.filter(g => g.parts.length);
+    if (!groups.length) return; // no usable cut list — nothing to draw
     numberParts(groups);
-    const partsEl = renderCutList(groups);
-    console.log('[VR] renderCutList result:', partsEl);
 
-    // Remove any previously generated sheet
-    const vrBar = btn?.closest('.visual-ref-bar') ?? null;
-    const existing = vrBar?.nextElementSibling;
-    if (existing?.classList.contains('visual-ref-section')) existing.remove();
+    const joineryImagePath = matchJoineryImage(vrPlanText);
+    const hasJoinery       = Boolean(joineryImagePath);
 
-    // ── Build sheet ───────────────────────────────────────────────
     const vrSection = document.createElement('div');
     vrSection.className = 'visual-ref-section';
 
     const hdEl = document.createElement('div');
     hdEl.className   = 'visual-ref-heading';
-    hdEl.textContent = 'Visual Reference Sheet';
+    hdEl.textContent = 'Visual Parts Sheet';
     vrSection.appendChild(hdEl);
+
+    vrSection.appendChild(buildPartsSheet(groups));
 
     const grid = document.createElement('div');
     grid.className = 'visual-ref-grid' + (hasJoinery ? '' : ' visual-ref-grid--single');
 
-    // Parts panel
     const partsPanel = document.createElement('div');
     partsPanel.className = 'visual-ref-panel';
     const partsLbl = document.createElement('div');
@@ -2415,11 +2436,7 @@
     partsPanel.appendChild(partsLbl);
     const partsBody = document.createElement('div');
     partsBody.className = 'vr-body vr-body--list';
-    if (partsEl) {
-      partsBody.appendChild(partsEl);
-    } else {
-      partsBody.innerHTML = '<p class="vr-error">No cut list data found.</p>';
-    }
+    partsBody.appendChild(renderCutList(groups));
     partsPanel.appendChild(partsBody);
     grid.appendChild(partsPanel);
 
@@ -2440,40 +2457,22 @@
       joineryPanel.appendChild(joineryBody);
       grid.appendChild(joineryPanel);
     }
-
     vrSection.appendChild(grid);
 
-    // Exploded view — full width beneath the parts list; fills in when Claude responds
-    if (groups.length) {
-      const explodedPanel = document.createElement('div');
-      explodedPanel.className = 'visual-ref-panel vr-exploded';
-      const explodedLbl = document.createElement('div');
-      explodedLbl.className   = 'vr-label';
-      explodedLbl.textContent = 'Exploded View';
-      explodedPanel.appendChild(explodedLbl);
-      explodedPanel.appendChild(renderLegend(groups));
-      const explodedBody = document.createElement('div');
-      explodedBody.className = 'vr-body vr-exploded-body';
-      explodedPanel.appendChild(explodedBody);
-      vrSection.appendChild(explodedPanel);
-      loadExplodedView(explodedBody, groups);
+    if (hasJoinery) {
+      const attr = document.createElement('p');
+      attr.className   = 'vr-attribution';
+      attr.textContent = 'Joint diagrams: Wikimedia Commons (CC BY-SA)';
+      vrSection.appendChild(attr);
     }
 
-    const attr = document.createElement('p');
-    attr.className   = 'vr-attribution';
-    attr.textContent = 'Joint diagrams: Wikimedia Commons (CC BY-SA)';
-    vrSection.appendChild(attr);
-
-    // ── Insert inline after the button ────────────────────────────
-    if (vrBar) {
-      vrBar.insertAdjacentElement('afterend', vrSection);
+    // End of the Materials section = just before the next h2 (Step-by-Step Build Plan)
+    const h2s = planRoot.querySelectorAll('h2');
+    if (h2s.length >= 2) {
+      planRoot.insertBefore(vrSection, h2s[1]);
     } else {
-      document.getElementById('plan-output')?.appendChild(vrSection);
+      planRoot.appendChild(vrSection);
     }
-    vrSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-    if (btn) btn.textContent = 'Visual Reference Generated ✓';
-    if (sidebarBtn) sidebarBtn.querySelector('span:last-child').textContent = 'Visual Reference Sheet ✓';
     gtag('event', 'visual_reference_generated', { project_description: state.project });
   }
 
@@ -2582,9 +2581,6 @@
   // Print button
   document.getElementById('btn-print').addEventListener('click', () => window.print());
 
-  // Visual Reference Sheet (sidebar button mirrors the inline plan button)
-  document.getElementById('btn-visual-ref-panel').addEventListener('click', generateVisualReference);
-
   // Ko-fi click tracking — event delegation so it works after widget renders
   document.getElementById('action-panel').addEventListener('click', (e) => {
     if (e.target.closest('#kofi-btn-wrap a')) {
@@ -2656,7 +2652,7 @@
     // Hide panel and reset all content buttons back to loading spinner state
     const panelEl = document.getElementById('action-panel');
     panelEl.style.display = 'none';
-    ['btn-print', 'btn-visual-ref-panel', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
+    ['btn-print', 'btn-3d-prompt', 'btn-vis-prompt', 'btn-feedback-toggle'].forEach(id => {
       const btn = document.getElementById(id);
       btn.disabled = true;
       btn.classList.add('loading');
