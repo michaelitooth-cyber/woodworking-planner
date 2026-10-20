@@ -679,6 +679,34 @@
       padding: 1px 5px;
       font-size: 14px;
     }
+    /* Cut list and other tables — give each column breathing room */
+    .plan-body table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 15px;
+    }
+    .plan-body th,
+    .plan-body td {
+      padding: 9px 20px 9px 0;
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .plan-body th {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--timber-mid);
+      border-bottom: 2px solid var(--border);
+    }
+    .plan-body th:last-child,
+    .plan-body td:last-child { padding-right: 0; }
+    @media (max-width: 600px) {
+      .plan-body table { display: block; overflow-x: auto; }
+      .plan-body th, .plan-body td { white-space: nowrap; }
+    }
     .plan-body hr {
       border: none;
       border-top: 1px solid var(--border-light);
