@@ -900,6 +900,107 @@
       border-radius: var(--radius-sm) !important;
     }
 
+    /* ── Suppliers and Men's Shed ── */
+    .extras-card {
+      margin-top: 24px;
+      background: var(--surface-high);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .extras-heading {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--timber-dark);
+      margin-bottom: 14px;
+    }
+    .extras-text {
+      font-size: 15px;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .supplier-filter {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .supplier-select {
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--text);
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .supplier-select:focus { outline: none; border-color: var(--timber-mid); }
+    .supplier-group-heading {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--timber-mid);
+      margin: 20px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .supplier-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 12px;
+    }
+    .supplier-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+    }
+    .supplier-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--timber-dark);
+    }
+    .supplier-type {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .supplier-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .supplier-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--surface-high);
+      border: 1px solid var(--border);
+      color: var(--timber-mid);
+    }
+    .supplier-link {
+      display: inline-block;
+      align-self: flex-start;
+      margin-top: auto;
+      padding: 8px 14px;
+      background: var(--action);
+      color: var(--action-text);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      transition: background 0.18s;
+    }
+    .supplier-link:hover { background: var(--action-hover); }
+    .extras-card > .supplier-link { margin-top: 0; }
+
     /* ── Feedback ── */
     .feedback-section {
       margin-top: 32px;
@@ -1268,6 +1369,7 @@
       /* Hide interactive chrome */
       .action-panel,
       .feedback-section,
+      .extras-card,
       footer,
       .wordmark,
       .wordmark-rule,
@@ -1578,6 +1680,33 @@
             <p>Putting your plan together&hellip;</p>
           </div>
         </div>
+
+        <!-- Where to buy timber and tools -->
+        <section id="suppliers-section" class="extras-card" style="display:none" aria-labelledby="suppliers-heading">
+          <h3 id="suppliers-heading" class="extras-heading">Find Timber &amp; Tool Suppliers</h3>
+          <div class="supplier-filter">
+            <label for="supplier-state">Show suppliers for</label>
+            <select id="supplier-state" class="supplier-select">
+              <option value="All States">All States</option>
+              <option value="VIC">VIC</option>
+              <option value="NSW">NSW</option>
+              <option value="QLD">QLD</option>
+              <option value="WA">WA</option>
+              <option value="SA">SA</option>
+              <option value="TAS">TAS</option>
+              <option value="NT">NT</option>
+              <option value="ACT">ACT</option>
+            </select>
+          </div>
+          <div id="supplier-list"></div>
+        </section>
+
+        <!-- Men's Shed -->
+        <section id="shed-section" class="extras-card" style="display:none" aria-labelledby="shed-heading">
+          <h3 id="shed-heading" class="extras-heading">Find Your Nearest Men&rsquo;s Shed</h3>
+          <p class="extras-text">Men&rsquo;s Sheds are community workshops across Australia &mdash; a great place to use shared tools, learn new skills, and connect with other woodworkers.</p>
+          <a class="supplier-link" href="https://mensshed.org/find-a-shed" target="_blank" rel="noopener noreferrer" id="shed-link">Find a Men&rsquo;s Shed <span aria-hidden="true">&#8599;</span></a>
+        </section>
 
         <div id="feedback-section" class="feedback-section" style="display:none">
           <div id="feedback-form-wrap" class="feedback-form open">
@@ -2005,6 +2134,7 @@
             }
             // The Visual Parts Sheet renders automatically at the end of the Materials section
             if (part2El) renderVisualReference(part2El);
+            showExtraSections(true);
 
             gtag('event', 'plan_generated', { project_description: state.project });
             // Activate plan-complete buttons; 3D/vis buttons stay loading until prompts arrive
@@ -2504,6 +2634,104 @@
     gtag('event', 'visual_reference_generated', { project_description: state.project });
   }
 
+  // ── Suppliers ──
+  const SUPPLIERS_NATIONAL = [
+    { name: 'Carbatec',       type: 'Tools + Timber',          url: 'carbatec.com.au' },
+    { name: 'Timbecon',       type: 'Tools + Timber + Turning', url: 'timbecon.com.au' },
+    { name: 'Hare & Forbes',  type: 'Machinery + Tools',       url: 'machineryhouse.com.au' },
+    { name: 'Bunnings',       type: 'General Hardware',        url: 'bunnings.com.au' },
+    { name: 'Wood Naturally', type: 'Australian Hardwoods',    url: 'woodnaturally.com' },
+  ];
+  const SUPPLIER_STORES = [
+    { name: 'Carbatec Melbourne',          state: 'VIC', type: 'Tools + Timber',           url: 'carbatec.com.au/stores' },
+    { name: 'Carbatec Sydney',             state: 'NSW', type: 'Tools + Timber',           url: 'carbatec.com.au/stores' },
+    { name: 'Carbatec Brisbane',           state: 'QLD', type: 'Tools + Timber',           url: 'carbatec.com.au/stores' },
+    { name: 'Carbatec Adelaide',           state: 'SA',  type: 'Tools + Timber',           url: 'carbatec.com.au/stores' },
+    { name: 'Timbecon Epping',             state: 'VIC', type: 'Tools + Timber + Turning', url: 'timbecon.com.au' },
+    { name: 'Timbecon Canning Vale',       state: 'WA',  type: 'Tools + Timber + Turning', url: 'timbecon.com.au' },
+    { name: 'Timbecon Balcatta',           state: 'WA',  type: 'Tools + Timber + Turning', url: 'timbecon.com.au' },
+    { name: 'Hare & Forbes Melbourne',     state: 'VIC', type: 'Machinery + Tools',        url: 'machineryhouse.com.au' },
+    { name: 'Hare & Forbes Sydney',        state: 'NSW', type: 'Machinery + Tools',        url: 'machineryhouse.com.au' },
+    { name: 'Hare & Forbes Brisbane',      state: 'QLD', type: 'Machinery + Tools',        url: 'machineryhouse.com.au' },
+    { name: 'Hare & Forbes Perth',         state: 'WA',  type: 'Machinery + Tools',        url: 'machineryhouse.com.au' },
+    { name: 'Hare & Forbes Adelaide',      state: 'SA',  type: 'Machinery + Tools',        url: 'machineryhouse.com.au' },
+    { name: 'Outlast Timber Mordialloc',   state: 'VIC', type: 'Specialist Australian hardwoods', url: 'outlasttimber.com.au' },
+    { name: 'Beyond Tools Malaga',         state: 'WA',  type: 'Tools',                    url: 'beyondtools.com.au' },
+  ];
+
+  function supplierCard(s) {
+    const card = document.createElement('div');
+    card.className = 'supplier-card';
+
+    const name = document.createElement('div');
+    name.className = 'supplier-name';
+    name.textContent = s.name;
+
+    const type = document.createElement('div');
+    type.className = 'supplier-type';
+    type.textContent = s.type;
+
+    const tags = document.createElement('div');
+    tags.className = 'supplier-tags';
+    const tag = document.createElement('span');
+    tag.className = 'supplier-tag';
+    tag.textContent = s.state ? `Store · ${s.state}` : 'Ships nationally';
+    tags.appendChild(tag);
+
+    const link = document.createElement('a');
+    link.className = 'supplier-link';
+    link.href = 'https://' + s.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = `Visit ${s.url.replace(/\/.*$/, '')} ↗`;
+    link.setAttribute('aria-label', `Visit ${s.name} website (opens in a new tab)`);
+    link.addEventListener('click', () => {
+      gtag('event', 'supplier_click', { supplier_name: s.name, state: document.getElementById('supplier-state').value });
+    });
+
+    card.append(name, type, tags, link);
+    return card;
+  }
+
+  // Render national suppliers plus the physical stores for the chosen state (all stores for "All States").
+  function renderSuppliers() {
+    const selectedState = document.getElementById('supplier-state').value;
+    const list = document.getElementById('supplier-list');
+    list.innerHTML = '';
+
+    const addGroup = (title, items) => {
+      if (!items.length) return;
+      const h = document.createElement('div');
+      h.className = 'supplier-group-heading';
+      h.textContent = title;
+      const grid = document.createElement('div');
+      grid.className = 'supplier-grid';
+      items.forEach(s => grid.appendChild(supplierCard(s)));
+      list.append(h, grid);
+    };
+
+    addGroup('Ship nationally', SUPPLIERS_NATIONAL);
+    const stores = selectedState === 'All States' ? SUPPLIER_STORES : SUPPLIER_STORES.filter(s => s.state === selectedState);
+    if (stores.length) {
+      addGroup(selectedState === 'All States' ? 'Physical stores' : `Physical stores in ${selectedState}`, stores);
+    } else {
+      const note = document.createElement('p');
+      note.className = 'extras-text';
+      note.style.marginTop = '16px';
+      note.textContent = `We don't have a listed store in ${selectedState} yet — the national suppliers above deliver there.`;
+      list.appendChild(note);
+    }
+  }
+
+  function showExtraSections(show) {
+    document.getElementById('suppliers-section').style.display = show ? '' : 'none';
+    document.getElementById('shed-section').style.display      = show ? '' : 'none';
+    if (show) renderSuppliers();
+  }
+
+  document.getElementById('supplier-state').addEventListener('change', renderSuppliers);
+  document.getElementById('shed-link').addEventListener('click', () => gtag('event', 'mens_shed_click'));
+
   // ── AI Prompt generation ──
   async function generateAIPrompts() {
     try {
@@ -2677,6 +2905,8 @@
     document.getElementById('project-input').value = '';
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
+    showExtraSections(false);
+    document.getElementById('supplier-state').value = 'All States';
     // Hide panel and reset all content buttons back to loading spinner state
     const panelEl = document.getElementById('action-panel');
     panelEl.style.display = 'none';
