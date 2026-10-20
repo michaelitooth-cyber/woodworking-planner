@@ -900,6 +900,30 @@
       border-radius: var(--radius-sm) !important;
     }
 
+    /* ── Loading placeholders (Visual Reference Sheet, suppliers) ── */
+    .vr-loading,
+    .extras-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 16px;
+    }
+    .vr-loading { padding: 32px 0 40px; transition: opacity 0.3s ease; }
+    .vr-loading p,
+    .extras-loading p { margin: 0; }
+    .vr-loading--leaving { position: absolute; left: 0; right: 0; opacity: 0; }
+    .vr-slot { position: relative; }
+    .vr-slot--resolving { transition: height 0.45s ease; }
+    .vr-content { transition: opacity 0.45s ease; }
+    .extras-loading { flex-direction: row; justify-content: center; gap: 14px; padding: 4px 0; }
+    .extras-reveal { animation: fadeIn 0.4s ease both; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) {
+      .vr-loading, .vr-slot--resolving, .vr-content, .extras-reveal { transition: none; animation: none; }
+    }
+
     /* ── Suppliers and Men's Shed ── */
     .extras-card {
       margin-top: 24px;
@@ -1702,6 +1726,12 @@
         </div>
 
         <!-- Where to buy timber and tools -->
+        <section id="suppliers-loading" class="extras-card" style="display:none" aria-busy="true">
+          <div class="extras-loading" role="status">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <p>Loading supplier information&hellip;</p>
+          </div>
+        </section>
         <section id="suppliers-section" class="extras-card" style="display:none" aria-labelledby="suppliers-heading">
           <h3 id="suppliers-heading" class="extras-heading extras-heading--toggle">
             <button type="button" id="suppliers-toggle" class="extras-toggle" aria-expanded="false" aria-controls="suppliers-body">
@@ -2045,6 +2075,9 @@
         <p>Putting your plan together&hellip;</p>
       </div>`;
 
+    vrPlaceholder = null;
+    showExtraLoading();
+
     let accumulated = '';
     let started    = false;
     let splitPoint = null; // char index in accumulated where '## Materials' starts
@@ -2090,6 +2123,8 @@
 
           if (parsed.error) {
             planEl.innerHTML = `<p class="plan-error">Sorry — ${escHtml(parsed.error)}</p>`;
+            vrPlaceholder = null;
+            showExtraSections(false);
             return;
           }
 
@@ -2120,6 +2155,10 @@
                   bodyEl.appendChild(part1);
                   bodyEl.appendChild(makeSketchSection());
                   bodyEl.appendChild(part2El);
+
+                  // Hold the Visual Reference Sheet's place straight away
+                  vrPlaceholder = makeVrPlaceholder();
+                  placeAtEndOfMaterials(part2El, vrPlaceholder);
                 } else {
                   // Materials not yet seen — full re-render as normal
                   try { bodyEl.innerHTML = marked.parse(accumulated); } catch(e) { bodyEl.textContent = accumulated; }
@@ -2128,6 +2167,7 @@
                 // Already split — only update the post-sketch section
                 const after = accumulated.slice(splitPoint);
                 try { part2El.innerHTML = marked.parse(after); } catch(e) { part2El.textContent = after; }
+                if (vrPlaceholder) placeAtEndOfMaterials(part2El, vrPlaceholder); // re-render wiped it
               }
             }
           }
@@ -2178,6 +2218,8 @@
     } catch (err) {
       console.error(err);
       planEl.innerHTML = `<p class="plan-error">Something went wrong. Please check your connection and try again.</p>`;
+      vrPlaceholder = null;
+      showExtraSections(false);
     }
   }
 
@@ -2594,14 +2636,14 @@
       groups = vrCutList ? parseCutList(vrCutList) : [];
     }
     groups = groups.filter(g => g.parts.length);
-    if (!groups.length) return; // no usable cut list — nothing to draw
+    if (!groups.length) { vrPlaceholder = null; return; } // no usable cut list — nothing to draw
     numberParts(groups);
 
     const joineryImagePath = matchJoineryImage(vrPlanText);
     const hasJoinery       = Boolean(joineryImagePath);
 
     const vrSection = document.createElement('div');
-    vrSection.className = 'visual-ref-section';
+    vrSection.className = 'vr-content';
 
     const hdEl = document.createElement('div');
     hdEl.className   = 'visual-ref-heading';
@@ -2651,14 +2693,68 @@
       vrSection.appendChild(attr);
     }
 
-    // End of the Materials section = just before the next h2 (Step-by-Step Build Plan)
-    const h2s = planRoot.querySelectorAll('h2');
-    if (h2s.length >= 2) {
-      planRoot.insertBefore(vrSection, h2s[1]);
-    } else {
-      planRoot.appendChild(vrSection);
-    }
+    // Reuse the loading slot if there is one (so the page doesn't shift), otherwise make one
+    const slot = vrPlaceholder ?? makeVrPlaceholder();
+    vrPlaceholder = null;
+    placeAtEndOfMaterials(planRoot, slot);
+    resolveVrSlot(slot, vrSection);
     gtag('event', 'visual_reference_generated', { project_description: state.project });
+  }
+
+  // ── Loading placeholders ──
+  // The Visual Reference slot is created as soon as the Materials section starts streaming and
+  // keeps its place while the plan text is re-rendered around it.
+  let vrPlaceholder = null;
+
+  function makeVrPlaceholder() {
+    const slot = document.createElement('div');
+    slot.className = 'visual-ref-section vr-slot';
+    slot.setAttribute('aria-busy', 'true');
+    slot.innerHTML = `
+      <div class="vr-loading" role="status">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <p>Preparing your Visual Reference Sheet&hellip;</p>
+      </div>`;
+    return slot;
+  }
+
+  // End of the Materials section = just before the next h2 (Step-by-Step Build Plan)
+  function placeAtEndOfMaterials(planRoot, el) {
+    const h2s = planRoot.querySelectorAll('h2');
+    planRoot.insertBefore(el, h2s.length >= 2 ? h2s[1] : null);
+    // Re-inserting restarts CSS animations; put the dots back in phase so they don't stutter
+    el.getAnimations?.({ subtree: true }).forEach(a => {
+      const t = a.effect.getComputedTiming();
+      a.currentTime = (performance.now() % t.duration) + (t.delay || 0);
+    });
+  }
+
+  // Cross-fade the loading message into the real content while the slot's height eases
+  // from the placeholder's height to the content's, so nothing jumps.
+  function resolveVrSlot(slot, content) {
+    const loading = slot.querySelector('.vr-loading');
+    slot.style.boxSizing = 'border-box';
+    const h0 = slot.offsetHeight;
+    slot.style.height   = h0 + 'px';
+    slot.style.overflow = 'hidden';
+    content.style.opacity = '0';
+    slot.appendChild(content);
+    if (loading) loading.classList.add('vr-loading--leaving'); // leaves the flow, so it no longer adds height
+    const cs = getComputedStyle(slot);
+    const h1 = content.offsetHeight + ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+      .reduce((sum, k) => sum + parseFloat(cs[k]), 0);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      slot.classList.add('vr-slot--resolving');
+      slot.style.height = h1 + 'px';
+      content.style.opacity = '1';
+    }));
+    setTimeout(() => {
+      loading?.remove();
+      slot.classList.remove('vr-slot--resolving');
+      slot.style.height = slot.style.overflow = slot.style.boxSizing = '';
+      content.style.opacity = '';
+      slot.removeAttribute('aria-busy');
+    }, 600);
   }
 
   // ── Suppliers ──
@@ -2750,10 +2846,25 @@
     }
   }
 
+  // The supplier card shows a loading placeholder while the plan is written, then resolves to the
+  // real section. The Men's Shed card is static, so it is shown from the start to hold its place.
+  function showExtraLoading() {
+    document.getElementById('suppliers-loading').style.display = '';
+    document.getElementById('suppliers-section').style.display = 'none';
+    document.getElementById('shed-section').style.display      = '';
+  }
+
   function showExtraSections(show) {
-    document.getElementById('suppliers-section').style.display = show ? '' : 'none';
-    document.getElementById('shed-section').style.display      = show ? '' : 'none';
-    if (show) renderSuppliers();
+    const suppliers = document.getElementById('suppliers-section');
+    document.getElementById('suppliers-loading').style.display = 'none';
+    suppliers.style.display = show ? '' : 'none';
+    suppliers.classList.remove('extras-reveal');
+    document.getElementById('shed-section').style.display = show ? '' : 'none';
+    if (show) {
+      renderSuppliers();
+      void suppliers.offsetWidth; // restart the fade-in
+      suppliers.classList.add('extras-reveal');
+    }
   }
 
   function setSuppliersOpen(open) {
@@ -2942,6 +3053,7 @@
     document.getElementById('project-input').value = '';
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
+    vrPlaceholder = null;
     showExtraSections(false);
     setSuppliersOpen(false);
     document.getElementById('supplier-state').value = 'All States';
