@@ -916,6 +916,26 @@
       color: var(--timber-dark);
       margin-bottom: 14px;
     }
+    .extras-heading--toggle { margin-bottom: 0; }
+    .extras-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      padding: 0;
+      background: none;
+      border: none;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .extras-toggle:hover { color: var(--action-hover); }
+    .extras-toggle:focus-visible { outline: 2px solid var(--timber-mid); outline-offset: 4px; border-radius: 4px; }
+    .extras-chevron { font-size: 18px; transition: transform 0.2s; }
+    .extras-toggle[aria-expanded="true"] .extras-chevron { transform: rotate(180deg); }
+    #suppliers-body { margin-top: 14px; }
     .extras-text {
       font-size: 15px;
       color: var(--text);
@@ -1683,7 +1703,13 @@
 
         <!-- Where to buy timber and tools -->
         <section id="suppliers-section" class="extras-card" style="display:none" aria-labelledby="suppliers-heading">
-          <h3 id="suppliers-heading" class="extras-heading">Find Timber &amp; Tool Suppliers</h3>
+          <h3 id="suppliers-heading" class="extras-heading extras-heading--toggle">
+            <button type="button" id="suppliers-toggle" class="extras-toggle" aria-expanded="false" aria-controls="suppliers-body">
+              <span>Find Timber &amp; Tool Suppliers</span>
+              <span class="extras-chevron" aria-hidden="true">&#9662;</span>
+            </button>
+          </h3>
+          <div id="suppliers-body" hidden>
           <div class="supplier-filter">
             <label for="supplier-state">Show suppliers for</label>
             <select id="supplier-state" class="supplier-select">
@@ -1699,6 +1725,7 @@
             </select>
           </div>
           <div id="supplier-list"></div>
+          </div><!-- /#suppliers-body -->
         </section>
 
         <!-- Men's Shed -->
@@ -2729,6 +2756,16 @@
     if (show) renderSuppliers();
   }
 
+  function setSuppliersOpen(open) {
+    document.getElementById('suppliers-toggle').setAttribute('aria-expanded', String(open));
+    document.getElementById('suppliers-body').hidden = !open;
+  }
+  document.getElementById('suppliers-toggle').addEventListener('click', (e) => {
+    const open = e.currentTarget.getAttribute('aria-expanded') !== 'true';
+    setSuppliersOpen(open);
+    if (open) gtag('event', 'suppliers_opened');
+  });
+
   document.getElementById('supplier-state').addEventListener('change', renderSuppliers);
   document.getElementById('shed-link').addEventListener('click', () => gtag('event', 'mens_shed_click'));
 
@@ -2906,6 +2943,7 @@
     document.getElementById('timber-input').value  = '';
     document.getElementById('plan-output').innerHTML = '';
     showExtraSections(false);
+    setSuppliersOpen(false);
     document.getElementById('supplier-state').value = 'All States';
     // Hide panel and reset all content buttons back to loading spinner state
     const panelEl = document.getElementById('action-panel');
